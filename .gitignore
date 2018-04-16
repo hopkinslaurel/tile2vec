@@ -2,7 +2,8 @@
 data/triplets
 data/triplets.zip
 data/tiles
-
+*.npy
+*.tif
 # Models
 *.ckpt
 
