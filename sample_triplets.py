@@ -154,14 +154,14 @@ def sample_distant_diff(img_shape, patch_radius):
 # Run
 data_dir = '/home/asamar/tile2vec/data/uganda_landsat/'
 print("Generating Train Set")
-img_triplets = get_triplet_imgs(data_dir,1000)
+img_triplets = get_triplet_imgs(data_dir,100000)
 print(img_triplets)
 patches_train = get_patch_triplets('/home/asamar/tile2vec/data/uganda_patches_train/',
                              data_dir, img_triplets, patch_size =50,
                                    neighborhood=125, save=True,verbose=False)
 
 print("Generating Test Set")
-img_triplets = get_triplet_imgs(data_dir,100)
+img_triplets = get_triplet_imgs(data_dir,10000)
 print(img_triplets)
 patches_test = get_patch_triplets('/home/asamar/tile2vec/data/uganda_patches_test/',
                              data_dir, img_triplets, patch_size =50,
