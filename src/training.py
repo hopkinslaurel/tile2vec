@@ -4,6 +4,29 @@ from torch.autograd import Variable
 from src.datasets import triplet_dataloader
 import sys
 
+# https://stackoverflow.com/questions/3173320/text-progress-bar-in-the-console
+def print_progress(iteration, total, prefix='', suffix='', decimals=1, bar_length=100):
+    """
+    Call in a loop to create terminal progress bar
+    @params:
+        iteration   - Required  : current iteration (Int)
+        total       - Required  : total iterations (Int)
+        prefix      - Optional  : prefix string (Str)
+        suffix      - Optional  : suffix string (Str)
+        decimals    - Optional  : positive number of decimals in percent complete (Int)
+        bar_length  - Optional  : character length of bar (Int)
+    """
+    str_format = "{0:." + str(decimals) + "f}"
+    percents = str_format.format(100 * (iteration / float(total)))
+    filled_length = int(round(bar_length * iteration / float(total)))
+    bar = '█' * filled_length + '-' * (bar_length - filled_length)
+    
+    sys.stdout.write('\r%s |%s| %s%s %s' % (prefix, bar, percents, '%', suffix)),
+    
+    if iteration == total:
+        sys.stdout.write('\n')
+    sys.stdout.flush()
+
 def prep_triplets(triplets, cuda):
     """
     Takes a batch of triplets and converts them into Pytorch variables 
@@ -26,6 +49,7 @@ def train(model, cuda, dataloader, optimizer, epoch, margin=1,
     n_train, n_batches = len(dataloader.dataset), len(dataloader)
     print_sum_loss = 0
     for idx, triplets in enumerate(dataloader):
+        print_progress(idx+1, n_batches)
         p, n, d = prep_triplets(triplets, cuda)
         optimizer.zero_grad()
         loss, l_n, l_d, l_nd = model.loss(p, n, d, margin=margin, l2=l2)
@@ -35,19 +59,19 @@ def train(model, cuda, dataloader, optimizer, epoch, margin=1,
         sum_l_n += l_n.data[0]
         sum_l_d += l_d.data[0]
         sum_l_nd += l_nd.data[0]
-        if (idx + 1) * dataloader.batch_size % print_every == 0:
-            print_avg_loss = (sum_loss - print_sum_loss) / (
-                print_every / dataloader.batch_size)
-            print('Epoch {}: [{}/{} ({:0.0f}%)], Avg loss: {:0.4f}'.format(
-                epoch, (idx + 1) * dataloader.batch_size, n_train,
-                100 * (idx + 1) / n_batches, print_avg_loss))
-            print_sum_loss = sum_loss
+        #if (idx + 1) * dataloader.batch_size % print_every == 0:
+        #    print_avg_loss = (sum_loss - print_sum_loss) / (
+        #        print_every / dataloader.batch_size)
+        #    print('Epoch {}: [{}/{} ({:0.0f}%)], Avg loss: {:0.4f}'.format(
+        #        epoch, (idx + 1) * dataloader.batch_size, n_train,
+        #        100 * (idx + 1) / n_batches, print_avg_loss))
+        #    print_sum_loss = sum_loss
     avg_loss = sum_loss / n_batches
     avg_l_n = sum_l_n / n_batches
     avg_l_d = sum_l_d / n_batches
     avg_l_nd = sum_l_nd / n_batches
     #print('Finished epoch {}: {:0.3f}s'.format(epoch, time()-t0))
-    print('Train Epoch {}: Loss {:0.4f}, Time {:0.3f}s'.format(epoch, avg_loss, time()-t0))
+    print('\nTrain Epoch {}: Loss {:0.4f}, Time {:0.3f}s'.format(epoch, avg_loss, time()-t0))
     #print('  Average loss: {:0.4f}'.format(avg_loss))
     #print('  Average l_n: {:0.4f}'.format(avg_l_n))
     #print('  Average l_d: {:0.4f}'.format(avg_l_d))
