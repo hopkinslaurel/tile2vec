@@ -7,6 +7,9 @@ import matplotlib.pyplot as plt
 import matplotlib
 import seaborn as sns
 from time import time
+from src.data_utils import clip_and_scale_image
+import torch
+from torch.autograd import Variable
 
 def sample_patch(img_shape, patch_radius):
     w_padded, h_padded, c = img_shape
@@ -25,7 +28,7 @@ def load_landsat(img_fn, bands_only=False):
     img = obj.ReadAsArray().astype(np.uint8)
     del obj # close GDAL dataset
     img = np.moveaxis(img, 0, -1)
-    if bands_only: img = img[:,:,:3]
+    if bands_only: img = img[:,:,:5]
     return img
 
 def extract_patch(img_padded, x0, y0, patch_radius):
@@ -46,3 +49,26 @@ def extract_patch(img_padded, x0, y0, patch_radius):
     patch = img_padded[row_min:row_max+1, col_min:col_max+1, :]
     return patch
 
+def get_test_features (img_name, model, z_dim, cuda, patch_size=50, patch_per_img=10, save=True, verbose=False):
+    if verbose:
+        print("Getting features for: " + img_name)
+    patch_radius = patch_size // 2   
+    img = load_landsat(img_name, bands_only=True)
+    img_shape = img.shape
+    output = np.zeros((1,z_dim))
+    for i in range(patch_per_img):
+        xa, ya = sample_patch(img_shape, patch_radius)
+        patch = extract_patch(img, xa, ya, patch_radius)
+        patch = np.moveaxis(patch, -1, 0)
+        patch = np.expand_dims(patch, axis=0)
+        patch = clip_and_scale_image(patch, 'landsat')
+        # Embed tile
+        patch = torch.from_numpy(patch).float()
+        patch = Variable(patch)
+        if cuda: patch = patch.cuda()
+        z = model.encode(patch)
+        if cuda: z = z.cpu()
+        z = z.data.numpy()
+        output += z
+    output = output / patch_per_img
+    return output
