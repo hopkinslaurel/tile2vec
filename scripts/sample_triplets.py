@@ -1,19 +1,18 @@
-# Minor edits to Neal Jean's pixel2vec:
-# nealjean/pixel2vec/notebooks/NJ5_naip_sampling*
+# sample_triplets.py
+# =============================================================================
+# Original code by Neal Jean: nealjean/pixel2vec/notebooks/NJ5_naip_sampling*
+# Samples triplets (anchor, neighbor, distant) from folder of tif or npy
+# images. Anchor and neighbor from same image file, distant from different
+# file. Minor extensions/edits by Anshul Samar. 
 
 import numpy as np
 import os
-import gdal
 import random
-import scipy.stats as stats
-import matplotlib.pyplot as plt
-import matplotlib
-import seaborn as sns
 from time import time
-import pdb
 from utils import *
+import paths
 
-def get_triplet_imgs(imgs_dir, n_triplets=1000):
+def get_triplet_imgs(imgs_dir, n_triplets=1000, no_duplicates=False):
     """
     Create n_triplet random pairs of image filenames.
     Anchor/neighbor patches will come from first file, 
@@ -24,13 +23,25 @@ def get_triplet_imgs(imgs_dir, n_triplets=1000):
     for filename in os.listdir(imgs_dir):
         if filename.endswith('.tif'):
             img_names.append(filename)
+    # hack - adding 1000 to account for possible duplicates
     img_triplets = list(map(lambda _: random.choice(img_names),
-                            range(2 * n_triplets)))
+                            range(2 * n_triplets + 1000)))
     img_triplets = np.array(img_triplets)
-    return img_triplets.reshape((-1, 2))
+    img_triplets = img_triplets.reshape((-1, 2))
+    if no_duplicates:
+        delete = []
+        for idx, row in enumerate(img_triplets):
+            if row[0] == row[1]:
+                delete.append(idx)
+        img_triplets = np.delete(img_triplets, delete, 0)
+        if len(delete) > 1000:
+            print("Not enough triplets!")
 
+    # filtering out extra
+    return img_triplets[:n_triplets]
+        
 
-def get_patch_triplets(patch_dir, img_dir, img_triplets, patch_size=50,
+def get_patch_triplets(patch_dir, img_dir, img_triplets, bands=7, patch_size=50,
                        neighborhood=125, save=True, verbose=False):
     """
     For each unique image, extracts any anchor
@@ -46,7 +57,7 @@ def get_patch_triplets(patch_dir, img_dir, img_triplets, patch_size=50,
         os.makedirs(patch_dir)
     size_even = (patch_size % 2 == 0)
     patch_radius = patch_size // 2
-    
+
     n_triplets = img_triplets.shape[0]
     unique_imgs = np.unique(img_triplets)
     total_imgs = len(unique_imgs)
@@ -56,7 +67,7 @@ def get_patch_triplets(patch_dir, img_dir, img_triplets, patch_size=50,
     for img_count, img_name in enumerate(unique_imgs):
         #print('\nStarting image {}/{}: {:0.3f}s\n'.format(img_count+1, total_imgs, time()-t0))
         print("Sampling image {}".format(img_name))
-        img = load_landsat(img_dir+img_name, bands_only=True)
+        img = load_landsat(img_dir+img_name, bands, bands_only=True)
         img_padded = np.pad(img, pad_width=[(patch_radius, patch_radius),
                                             (patch_radius, patch_radius), (0,0)],
                             mode='reflect')
@@ -152,19 +163,29 @@ def sample_distant_diff(img_shape, patch_radius):
 
 
 # Run
+np.random.seed(1)
+bands = 7
 data_dir = '/home/asamar/tile2vec/data/uganda_landsat/'
 print("Generating Train Set")
-img_triplets = get_triplet_imgs(data_dir,100000)
-print(img_triplets)
-patches_train = get_patch_triplets('/home/asamar/tile2vec/data/uganda_patches_train/',
-                             data_dir, img_triplets, patch_size =50,
-                                   neighborhood=125, save=True,verbose=False)
+#img_triplets = get_triplet_imgs(data_dir,100000)
+#print(img_triplets)
+#patches_train = get_patch_triplets('/home/asamar/tile2vec/data/uganda_patches_train/',
+#                                   data_dir, img_triplets, bands, patch_size =50,
+#                                   neighborhood=125, save=True,verbose=False)
 
 print("Generating Test Set")
-img_triplets = get_triplet_imgs(data_dir,10000)
+#img_triplets = get_triplet_imgs(data_dir,10000)
+#print(img_triplets)
+#patches_test = get_patch_triplets('/home/asamar/tile2vec/data/uganda_patches_test/',
+#                                  data_dir, img_triplets, bands, patch_size =50,
+#                                  neighborhood=125, save=True,verbose=False)
+
+print("Generating LSMS Set")
+data_dir = '/home/asamar/tile2vec/data/uganda_landsat_test/'
+img_triplets = get_triplet_imgs(data_dir,10000,no_duplicates=True)
 print(img_triplets)
-patches_test = get_patch_triplets('/home/asamar/tile2vec/data/uganda_patches_test/',
-                             data_dir, img_triplets, patch_size =50,
+patches_test = get_patch_triplets('/home/asamar/tile2vec/data/uganda_patches_lsms/',
+                                  data_dir, img_triplets, bands, patch_size =50,
                                   neighborhood=125, save=True,verbose=False)
 
 

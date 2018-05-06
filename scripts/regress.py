@@ -44,10 +44,11 @@ margin = 0.25
 
 # Plot single panel
 t0 = time.time()
-X, y, y_hat, r_squareds_test = predict_consumption(country, country_path,
+X, y, y_hat, r_squareds_test, mse = predict_consumption(country, country_path,
                                 dimension, k, k_inner, points, alpha_low,
                                 alpha_high, margin)
-print(r_squareds_test)
+print('r2: ' + str(r_squareds_test))
+print('mse: ' + str(mse))
 t1 = time.time()
 print('Finished in {} seconds'.format(t1-t0))
 

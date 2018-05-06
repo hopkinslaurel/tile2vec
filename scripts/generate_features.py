@@ -1,4 +1,4 @@
-# Based on Neal Jean/Sherrie
+# Based on Neal Jean/Sherrie's code
 
 import numpy as np
 import os
@@ -32,9 +32,10 @@ tilenet.eval()
 test_imgs = 642
 patches_per_img = 10
 X = np.zeros((test_imgs, z_dim))
+bands = 5
 
 for i in range(test_imgs):
     img_name = '/home/asamar/tile2vec/data/uganda_landsat_test/landsat7_uganda_3yr_cluster_' + str(i) + '.tif'
-    X[i] = get_test_features (img_name, tilenet, z_dim, cuda, patch_size=50, patch_per_img=10, save=True, verbose=False)
+    X[i] = get_test_features (img_name, tilenet, z_dim, cuda, bands, patch_size=50, patch_per_img=10, save=True, verbose=True)
 
 np.save('/home/asamar/tile2vec/data/uganda_lsms/cluster_conv_features.npy', X)
