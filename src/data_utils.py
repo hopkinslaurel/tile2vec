@@ -5,6 +5,7 @@ from time import time
 from collections import Counter
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
+import numpy as np
 
 def clip_and_scale_image(img, img_type='naip', clip_min=0, clip_max=10000):
     """
@@ -14,5 +15,5 @@ def clip_and_scale_image(img, img_type='naip', clip_min=0, clip_max=10000):
     if img_type in ['naip', 'rgb']:
         return img / 255
     elif img_type == 'landsat':
-        return np.clip(img, clip_min, clip_max) / (clip_max - clip_min)
-
+        #return np.clip(img, clip_min, clip_max) / (clip_max - clip_min)
+        return np.clip(img, 0, 255) / (255)

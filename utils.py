@@ -19,16 +19,23 @@ def sample_patch(img_shape, patch_radius):
     ya = np.random.randint(0, h) + patch_radius
     return xa, ya
 
-def load_landsat(img_fn, bands_only=False):
+def load_landsat_npy(img_fn, bands, bands_only=False):
+    img = np.load(img_fn)
+    if bands_only: img = img[:,:,:bands]
+    return img
+
+def load_landsat(img_fn, bands, bands_only=False, is_npy=True):
     """
     Loads Landsat image with gdal, returns image as array.
     Move bands (i.e. r,g,b,etc) to last dimension. 
     """
+    if is_npy:
+        return load_landsat_npy(img_fn, bands, bands_only)
     obj = gdal.Open(img_fn)
     img = obj.ReadAsArray().astype(np.uint8)
     del obj # close GDAL dataset
     img = np.moveaxis(img, 0, -1)
-    if bands_only: img = img[:,:,:5]
+    if bands_only: img = img[:,:,:bands]
     return img
 
 def extract_patch(img_padded, x0, y0, patch_radius):
@@ -49,11 +56,12 @@ def extract_patch(img_padded, x0, y0, patch_radius):
     patch = img_padded[row_min:row_max+1, col_min:col_max+1, :]
     return patch
 
-def get_test_features (img_name, model, z_dim, cuda, patch_size=50, patch_per_img=10, save=True, verbose=False):
+def get_test_features (img_name, model, z_dim, cuda, bands=7, patch_size=50,
+                       patch_per_img=10, save=True, verbose=False, npy=True):
     if verbose:
         print("Getting features for: " + img_name)
     patch_radius = patch_size // 2   
-    img = load_landsat(img_name, bands_only=True)
+    img = load_landsat(img_name, bands, bands_only=True, is_npy=npy)
     img_shape = img.shape
     output = np.zeros((1,z_dim))
     for i in range(patch_per_img):
