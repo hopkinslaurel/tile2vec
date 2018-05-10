@@ -8,24 +8,18 @@ import os
 import torch
 from torch import optim
 from time import time
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-import gdal
 import random
-import scipy.stats as stats
 import numpy as np
 from fig_utils import *
 tile2vec_dir = '/home/asamar/tile2vec'
 sys.path.append('../')
 sys.path.append(tile2vec_dir)
-
-from src.datasets import TileTripletsDataset, GetBands, RandomFlipAndRotate
-from src.datasets import ClipAndScale, ToFloatTensor, triplet_dataloader
-from src.tilenet import make_tilenet
+from src.datasets import triplet_dataloader
+from src.minires import make_minires
 from src.training import train, validate, prep_triplets
 from utils import *
 import paths
+from tensorboardX import SummaryWriter
 
 torch.manual_seed(1)
 
@@ -35,6 +29,9 @@ cuda = torch.cuda.is_available()
 if cuda:
     torch.cuda.manual_seed_all(1)
     torch.backends.cudnn.deterministic = True
+
+# Logging
+writer = SummaryWriter(paths.log_dir + 'exp1')
     
 # Data Parameters
 img_type = 'landsat'
@@ -69,8 +66,10 @@ print('LSMS Dataloader set up complete.')
 
 # Training Parameters
 in_channels = bands
-z_dim = 512
-TileNet = make_tilenet(in_channels=in_channels, z_dim=z_dim)
+z_dim = 256
+# TileNet = make_tilenet(in_channels=in_channels, z_dim=z_dim)
+# TileNet = make_cnn(in_channels=in_channels, z_dim=z_dim)
+TileNet = make_minires(in_channels=in_channels)
 # TileNet.train()
 # model_fn = '/home/asamar/tile2vec/models/5_bands/TileNet.ckpt'
 # TileNet.load_state_dict(torch.load(model_fn))
@@ -79,7 +78,6 @@ print('TileNet set up complete.')
 
 lr = 1e-3
 optimizer = optim.Adam(TileNet.parameters(), lr=lr, betas=(0.5, 0.999))
-
 epochs = 50
 margin = 10
 l2 = 0.01
@@ -90,11 +88,12 @@ if not os.path.exists(paths.model_dir): os.makedirs(paths.model_dir)
 
 print('Begin Training')
 t0 = time()
-train_loss = []
-test_loss = []
-lsms_loss = []
+# train_loss = []
+# test_loss = []
+# lsms_loss = []
 
 # Regression variables
+lsms = True
 test_imgs = 642
 patches_per_img = 10
 country = 'uganda'
@@ -106,66 +105,55 @@ points = 10
 alpha_low = 1
 alpha_high = 5
 regression_margin = 0.25
-r2_list = []
-mse_list = []
+# r2_list = []
+# mse_list = []
 
 # Train
 for epoch in range(0, epochs):
     avg_loss_train = train(
     TileNet, cuda, train_dataloader, optimizer, epoch+1, margin=margin, l2=l2,
         print_every=print_every, t0=t0)
-    train_loss.append(avg_loss_train)
+    # train_loss.append(avg_loss_train)
 
     avg_loss_test= validate(
     TileNet, cuda, test_dataloader, optimizer, epoch+1, margin=margin, l2=l2,
         print_every=print_every, t0=t0)
-    test_loss.append(avg_loss_test)
+    # test_loss.append(avg_loss_test)
 
     avg_loss_lsms= validate(
         TileNet, cuda, lsms_dataloader, optimizer, epoch+1, margin=margin, l2=l2,
         print_every=print_every, t0=t0)
-    lsms_loss.append(avg_loss_lsms)
+    # lsms_loss.append(avg_loss_lsms)
 
+    writer.add_scalars('loss',{"train":avg_loss_train,
+                               "test":avg_loss_test,
+                               "lsms":avg_loss_lsms}, epoch)
+    
     if save_models:
         model_fn = os.path.join(paths.model_dir, 'TileNet.ckpt')
         torch.save(TileNet.state_dict(), model_fn)
-    plt.figure()
-    plt.plot(list(range(0,epoch+1)), train_loss, 'b', label='train')
-    plt.plot(list(range(0,epoch+1)), test_loss, 'r', label='test')
-    plt.plot(list(range(0,epoch+1)), lsms_loss, 'g', label='lsms')
-    plt.xlabel('Epoch', fontsize=14)
-    plt.ylabel('Loss', fontsize=14)
-    plt.legend()
-    plt.show()
-    plt.savefig('loss.png')
-    plt.close()
 
-    TileNet.eval()
-    X = np.zeros((test_imgs, z_dim))
-    for i in range(test_imgs):
-        img_name = paths.lsms_images + 'landsat7_uganda_3yr_cluster_' + str(i) + '.tif'
-        X[i] = get_test_features (img_name, TileNet, z_dim, cuda, bands,
+    if lsms:
+        TileNet.eval()
+        X = np.zeros((test_imgs, z_dim))
+        for i in range(test_imgs):
+            img_name = paths.lsms_images + 'landsat7_uganda_3yr_cluster_' + str(i) + '.tif'
+            X[i] = get_test_features (img_name, TileNet, z_dim, cuda, bands,
                                   patch_size=50, patch_per_img=10, save=True,
                                   verbose=False, npy=False)
 
-    np.save(paths.lsms_data + 'cluster_conv_features.npy', X)
+        np.save(paths.lsms_data + 'cluster_conv_features.npy', X)
 
-    X, y, y_hat, r2, mse = predict_consumption(country, country_path,
-                                dimension, k, k_inner, points, alpha_low,
-                                alpha_high, regression_margin)
-    print("r2: " + str(r2))
-    print("mse: " + str(mse))
-    r2_list.append(r2)
-    mse_list.append(mse)
+        X, y, y_hat, r2, mse = predict_consumption(country, country_path,
+                                                   dimension, k, k_inner, points, alpha_low,
+                                                   alpha_high, regression_margin)
+        print("r2: " + str(r2))
+        print("mse: " + str(mse))
+        # r2_list.append(r2)
+        # mse_list.append(mse)
+        writer.add_scalar('r2', r2, epoch)
+        writer.add_scalar('mse', mse, epoch)
 
-    plt.figure()
-    plt.plot(list(range(0,epoch+1)), r2_list, 'b', label='r^2')
-    plt.plot(list(range(0,epoch+1)), mse_list, 'r', label='mse')
-    plt.xlabel('Epoch', fontsize=14)
-    plt.legend()
-    plt.show()
-    plt.savefig('r2_mse.png')
-    plt.close()
 
     
 
