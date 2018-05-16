@@ -48,7 +48,7 @@ def plot_predictions(country, y, y_hat, r2, margin):
     plt.title(country.capitalize() + ': $r^2 = {0:.2f}$'.format(r2))
     plt.show()
     plt.savefig('prediction.png')
-
+    plt.close("all")
 
 def compute_plot_params(y, y_hat, margin):
     """
