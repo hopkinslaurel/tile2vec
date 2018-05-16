@@ -30,9 +30,9 @@ def visualize_raw(num_images, img_path, tag):
         x = vutils.make_grid(torch.from_numpy(triplet), 3)
         writer_data.add_image(tag + "/" + str(i),x)
 
-#visualize_raw(3, paths.train_tiles, 'train')
-#visualize_raw(3, paths.test_tiles, 'test')
-#visualize_raw(3, paths.lsms_tiles, 'lsms')
+visualize_raw(10, paths.train_tiles, 'train')
+visualize_raw(10, paths.test_tiles, 'test')
+visualize_raw(10, paths.lsms_tiles, 'lsms')
 
 def visualize_lsms(num_images, img_path, tag, X, y, max_len):
     data = torch.zeros(num_images, 3, max_len, max_len)
@@ -51,7 +51,7 @@ def visualize_lsms(num_images, img_path, tag, X, y, max_len):
 X, _, y = load_country_lsms(paths.lsms_data)
 X = torch.from_numpy(X)
 y = np.ndarray.tolist(y)
-visualize_lsms(3, paths.lsms_images, 'last_exp', X, y, 74)
+visualize_lsms(10, paths.lsms_images, 'last_exp', X, y, 74)
                        
 def sanity():
     for i in range(0,3):
