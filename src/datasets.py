@@ -133,4 +133,4 @@ def triplet_dataloader(img_type, tile_dir, bands=4, augment=True,
         num_workers=num_workers)
     return dataloader
 
-    
+

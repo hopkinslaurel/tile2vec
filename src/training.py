@@ -37,7 +37,7 @@ def prep_triplets(triplets, cuda):
     	a, n, d = (a.cuda(), n.cuda(), d.cuda())
     return (a, n, d)
 
-def train(model, cuda, dataloader, optimizer, epoch, margin=1,
+def train_model(model, cuda, dataloader, optimizer, epoch, margin=1,
     l2=0, print_every=100, t0=None):
     """
     Trains a model for one epoch using the provided dataloader.
@@ -49,7 +49,7 @@ def train(model, cuda, dataloader, optimizer, epoch, margin=1,
     n_train, n_batches = len(dataloader.dataset), len(dataloader)
     print_sum_loss = 0
     for idx, triplets in enumerate(dataloader):
-        print_progress(idx+1, n_batches)
+        #print_progress(idx+1, n_batches)
         p, n, d = prep_triplets(triplets, cuda)
         optimizer.zero_grad()
         loss, l_n, l_d, l_nd = model.loss(p, n, d, margin=margin, l2=l2)
@@ -78,7 +78,7 @@ def train(model, cuda, dataloader, optimizer, epoch, margin=1,
     #print('  Average l_nd: {:0.4f}\n'.format(avg_l_nd))
     return avg_loss #(avg_loss, avg_l_n, avg_l_d, avg_l_nd)
 
-def validate(model, cuda, dataloader, optimizer, epoch, margin=1,
+def validate_model(model, cuda, dataloader, optimizer, epoch, margin=1,
     l2=0, print_every=100, t0=None):
     """
     Validates a model using the provided dataloader.
