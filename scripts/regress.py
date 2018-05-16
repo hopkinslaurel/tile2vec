@@ -1,6 +1,8 @@
 # Neal Jean/Figure 3 notebook (see predicting-poverty repo)
 # minor edits by Anshul Samar
 
+import sys
+sys.path.append('/home/asamar/tile2vec/')
 from fig_utils import *
 import matplotlib.pyplot as plt
 import time
@@ -33,7 +35,7 @@ import time
 
 # Plot parameters
 country = 'uganda'
-country_path = '/home/asamar/tile2vec/data/uganda_lsms/'
+country_path = '/home/asamar/tile2vec/lsms/uganda_lsms/'
 dimension = None
 k = 5
 k_inner = 5
@@ -47,6 +49,8 @@ t0 = time.time()
 X, y, y_hat, r_squareds_test, mse = predict_consumption(country, country_path,
                                 dimension, k, k_inner, points, alpha_low,
                                 alpha_high, margin)
+print(X.shape)
+print(y.shape)
 print('r2: ' + str(r_squareds_test))
 print('mse: ' + str(mse))
 t1 = time.time()
