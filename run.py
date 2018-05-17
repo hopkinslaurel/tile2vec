@@ -28,11 +28,20 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-train', action='store_true')
 parser.add_argument('-test',  action='store_true')
 parser.add_argument('-test_lsms',  action='store_true')
-parser.add_argument('-predict', action='store_true')
+parser.add_argument('-predict_small', action='store_true')
+parser.add_argument('-predict_big', action='store_true')
+parser.add_argument('-quantile', action='store_true')
 parser.add_argument('-debug', action='store_true')
 parser.add_argument('--model_fn', dest='model_fn')
+parser.add_argument('--exp_name', dest='exp_name')
+parser.add_argument('--epochs', dest="epochs", type=int, default=50)
+parser.add_argument('--trials', dest="trials", type=int, default=10)
+parser.add_argument('-save_models', action='store_true')
 args = parser.parse_args()
 print(args)
+
+if not args.save_models:
+    print("NOT SAVING CHECKPOINTS")
 
 # Environment
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
@@ -45,7 +54,7 @@ if args.debug:
         torch.backends.cudnn.deterministic = True
 
 # Logging
-writer = SummaryWriter(paths.log_dir + 'nips')
+writer = SummaryWriter(paths.log_dir + args.exp_name)
     
 # Data Parameters
 img_type = 'landsat'
@@ -94,22 +103,22 @@ if args.test_lsms:
 in_channels = bands
 z_dim = 512
 TileNet = make_tilenet(in_channels=in_channels, z_dim=z_dim)
+if cuda: TileNet.cuda()
 
 if args.model_fn:
     TileNet.load_state_dict(torch.load(args.model_fn))
 
-if cuda: TileNet.cuda()
 print('TileNet set up complete.')
 
 lr = 1e-3
 optimizer = optim.Adam(TileNet.parameters(), lr=lr, betas=(0.5, 0.999))
-epochs = 100
 margin = 50
 l2 = 0.01
 print_every = 10000
-save_models = True
 
 if not os.path.exists(paths.model_dir): os.makedirs(paths.model_dir)
+if not os.path.exists(paths.model_dir + args.exp_name):
+    os.makedirs(paths.model_dir + args.exp_name)
 
 print('Begin Training')
 t0 = time()
@@ -132,11 +141,12 @@ regression_margin = 0.25
 train_loss = []
 test_loss = []
 lsms_loss = []
-r2_list = {'avg':{},'emax':{},'sample':{}}
-mse_list = {'avg':{},'emax':{},'sample':{}}
+r2_list = {'big':{},'small':{}}
+mse_list = {'big':{},'small':{}}
+save_dir = paths.model_dir + args.exp_name + '/'
 
 # Train
-for epoch in range(0, epochs):
+for epoch in range(0, args.epochs):
     if args.train:
         avg_loss_train = train_model(TileNet, cuda, train_dataloader, optimizer,
                                      epoch+1, margin=margin, l2=l2,
@@ -164,108 +174,86 @@ for epoch in range(0, epochs):
                                    "test":avg_loss_test,
                                    "lsms":avg_loss_lsms}, epoch)
 
-    if args.predict:
-        # EMax features
-        print("Generating LSMS EMax Features")
-        img_names = [paths.lsms_images_big + 'landsat7_uganda_3yr_cluster_' \
-                     + str(i) + '.tif' for i in range(test_imgs)]
-        X = get_emax_features(img_names, TileNet, z_dim, cuda, bands,
-                             patch_size=50, patch_per_img=10, save=True,
-                             verbose=False, npy=False)
-        np.save(paths.lsms_data + 'cluster_conv_features.npy', X)
-
-        r2_list['emax'][epoch] = []
-        mse_list['emax'][epoch] = []
-        for i in range(10):
-            _, _, _, r2, mse = predict_consumption(country, country_path,
-                                                   dimension, k, k_inner,
-                                                   points, alpha_low,
-                                                   alpha_high,
-                                                   regression_margin)
-
-            r2_list['emax'][epoch].append(r2)
-            mse_list['emax'][epoch].append(mse)
-    
-        print("Emax r2: " + str(r2_list['emax'][epoch]))
-        print("Emax mse: " + str(mse_list['emax'][epoch]))
-
-        # Sample Features
-        print("Generating LSMS Sample Features")
+    if args.predict_small:
+        # Small Image Features
+        print("Generating LSMS Small Features")
         img_names = [paths.lsms_images + 'landsat7_uganda_3yr_cluster_' \
                      + str(i) + '.tif' for i in range(test_imgs)]
-        X = get_sample_features(img_names, TileNet, z_dim, cuda, bands,
-                             patch_size=50, patch_per_img=10, save=True,
-                             verbose=False, npy=False)
+        X = get_small_features(img_names, TileNet, z_dim, cuda, bands,
+                               patch_size=50, patch_per_img=10, save=True,
+                               verbose=False, npy=False, quantile=args.quantile)
         np.save(paths.lsms_data + 'cluster_conv_features.npy', X)
 
-        r2_list['sample'][epoch] = []
-        mse_list['sample'][epoch] = []
-        for i in range(10):
-            _, _, _, r2, mse = predict_consumption(country, country_path,
-                                                   dimension, k, k_inner,
-                                                   points, alpha_low,
-                                                   alpha_high,
-                                                   regression_margin)
+        r2_list['small'][epoch] = []
+        mse_list['small'][epoch] = []
+        for i in range(args.trials):
+            X, y, y_hat, r2, mse = predict_consumption(country, country_path,
+                                                       dimension, k, k_inner,
+                                                       points, alpha_low,
+                                                       alpha_high,
+                                                       regression_margin)
 
-            r2_list['sample'][epoch].append(r2)
-            mse_list['sample'][epoch].append(mse)
+            r2_list['small'][epoch].append(r2)
+            mse_list['small'][epoch].append(mse)
+        with open(save_dir + '/y_small_e' + str(epoch) + '.p', 'wb') as f:
+            pickle.dump((y, y_hat, r2),f)
+        print("Small r2: " + str(r2_list['small'][epoch]))
+        print("Small mse: " + str(mse_list['small'][epoch]))
 
-        print("Sample r2: " + str(r2_list['sample'][epoch]))
-        print("Sample mse: " + str(mse_list['sample'][epoch]))
-        
-        # Avg Features
+    if args.predict_big:
+        # Big Image Features
         print("Generating LSMS Average Features")
         img_names = [paths.lsms_images_big + 'landsat7_uganda_3yr_cluster_' \
                      + str(i) + '.tif' for i in range(test_imgs)]
-        X = get_avg_features(img_names, TileNet, z_dim, cuda, bands,
+        X = get_big_features(img_names, TileNet, z_dim, cuda, bands,
                              patch_size=50, patch_per_img=10, save=True,
-                             verbose=False, npy=False)
+                             verbose=False, npy=False, quantile=args.quantile)
         np.save(paths.lsms_data + 'cluster_conv_features.npy', X)
 
-        r2_list['avg'][epoch] = []
-        mse_list['avg'][epoch] = []
-        for i in range(10):
-            _, _, _, r2, mse = predict_consumption(country, country_path,
+        r2_list['big'][epoch] = []
+        mse_list['big'][epoch] = []
+        for i in range(args.trials):
+            X, y, y_hat, r2, mse = predict_consumption(country, country_path,
                                                    dimension, k, k_inner,
                                                    points, alpha_low,
                                                    alpha_high,
                                                    regression_margin)
 
-            r2_list['avg'][epoch].append(r2)
-            mse_list['avg'][epoch].append(mse)
+            r2_list['big'][epoch].append(r2)
+            mse_list['big'][epoch].append(mse)
+        with open(save_dir + '/y_big_e' + str(epoch) + '.p', 'wb') as f:
+            pickle.dump((y, y_hat, r2),f)
+        print("Big r2: " + str(r2_list['big'][epoch]))
+        print("Big mse: " + str(mse_list['big'][epoch]))
 
-        print("Avg r2: " + str(r2_list['avg'][epoch]))
-        print("Avg mse: " + str(mse_list['avg'][epoch]))
+    if args.predict_small and args.predict_big:
+        writer.add_scalars('r2',{"small": np.mean(r2_list['small'][epoch]),
+                                 "big": np.mean(r2_list['big'][epoch])}, epoch)
 
-
-        writer.add_scalars('r2',{"sample": np.mean(r2_list['sample'][epoch]),
-                                 "emax": np.mean(r2_list['emax'][epoch]),
-                                 "avg": np.mean(r2_list['avg'][epoch])}, epoch)
-
-        writer.add_scalars('mse',{"sample": np.mean(mse_list['sample'][epoch]),
-                                 "emax": np.mean(mse_list['emax'][epoch]),
-                                 "avg": np.mean(mse_list['avg'][epoch])}, epoch)
+        writer.add_scalars('mse',{"small": np.mean(mse_list['small'][epoch]),
+                                 "big": np.mean(mse_list['big'][epoch])}, epoch)
             
-    if save_models:
+    if args.save_models:
+        print("Saving")
         save_name = 'TileNet' + str(epoch) + '.ckpt'
-        model_path = os.path.join(paths.model_dir, save_name)
+        model_path = os.path.join(save_dir, save_name)
         torch.save(TileNet.state_dict(), model_path)
         if args.train:
-            with open('train_loss.p', 'wb') as f:
+            with open(save_dir + '/train_loss.p', 'wb') as f:
                 pickle.dump(train_loss, f)
         if args.test:
-            with open('test_loss.p', 'wb') as f:
+            with open(save_dir + '/test_loss.p', 'wb') as f:
                 pickle.dump(test_loss, f)
         if args.test_lsms:
-            with open('lsms_loss.p', 'wb') as f:
+            with open(save_dir + '/lsms_loss.p', 'wb') as f:
                 pickle.dump(lsms_loss, f)
         if args.predict:
-            with open('r2_' + str(epoch) + '.p', 'wb') as f:
+            with open(save_dir + '/r2_' + str(epoch) + '.p', 'wb') as f:
                 pickle.dump(r2_list, f)
-            with open('mse_' + str(epoch) + '.p', 'wb') as f:
+            with open(save_dir + '/mse_' + str(epoch) + '.p', 'wb') as f:
                 pickle.dump(mse_list, f)
         
-
+print("Finished.")
 
     
 
