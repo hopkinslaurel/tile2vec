@@ -52,10 +52,35 @@ def extract_patch(img_padded, x0, y0, patch_radius):
     patch = img_padded[row_min:row_max+1, col_min:col_max+1, :]
     return patch
 
-def get_sample_features (img_names, model, z_dim, cuda, bands=7, patch_size=50,
-                       patch_per_img=10, save=True, verbose=False, npy=True):
+def process_patch_features (model, patch, cuda):
+    patch = np.moveaxis(patch, -1, 0)
+    patch = np.expand_dims(patch, axis=0)
+    patch = clip_and_scale_image(patch, 'landsat')
+    # Embed tile
+    patch = torch.from_numpy(patch).float()
+    patch = Variable(patch)
+    if cuda: patch = patch.cuda()
+    z = model.encode(patch)
+    if cuda: z = z.cpu()
+    z = z.data.numpy()
+    return z
+
+def compute_quantile(output):
+    qvec = np.zeros((1,output.shape[1]*5))
+    i = 0
+    for q in [0, 25, 50, 75, 100]:
+        for j in range(output.shape[1]):
+            qvec[0][i] = np.percentile(output[:,j], q)
+            i += 1    
+    return qvec
+            
+def get_small_features (img_names, model, z_dim, cuda, bands=7, patch_size=50,
+                        patch_per_img=10, save=True, verbose=False, npy=True,
+                        quantile=False):
     model.eval()
     X = np.zeros((len(img_names), z_dim))
+    if quantile:
+        X = np.zeros((len(img_names), z_dim*5))
     for k in range(len(img_names)):
         img_name = img_names[k]
         if verbose:
@@ -63,29 +88,25 @@ def get_sample_features (img_names, model, z_dim, cuda, bands=7, patch_size=50,
         patch_radius = patch_size // 2   
         img = load_landsat(img_name, bands, bands_only=True, is_npy=npy)
         img_shape = img.shape
-        output = np.zeros((1,z_dim))
+        output = np.zeros((patch_per_img,z_dim))
         for i in range(patch_per_img):
             xa, ya = sample_patch(img_shape, patch_radius)
             patch = extract_patch(img, xa, ya, patch_radius)
-            patch = np.moveaxis(patch, -1, 0)
-            patch = np.expand_dims(patch, axis=0)
-            patch = clip_and_scale_image(patch, 'landsat')
-            # Embed tile
-            patch = torch.from_numpy(patch).float()
-            patch = Variable(patch)
-            if cuda: patch = patch.cuda()
-            z = model.encode(patch)
-            if cuda: z = z.cpu()
-            z = z.data.numpy()
-            output += z
-        output = output / patch_per_img
+            output[i] = process_patch_features (model, patch, cuda)
+        if quantile:
+            output = compute_quantile(output)
+        else:
+            output = np.expand_dims(np.average(output, axis=0),0)
         X[k] = output
     return X
 
-def get_avg_features (img_names, model, z_dim, cuda, bands=5, patch_size=50,
-                      patch_per_img=36, save=True, verbose=False, npy=True):
+def get_big_features (img_names, model, z_dim, cuda, bands=5, patch_size=50,
+                      patch_per_img=10, save=True, verbose=False, npy=True,
+                      quantile=False):
     model.eval()
     X = np.zeros((len(img_names), z_dim))
+    if quantile:
+        X = np.zeros((len(img_names), z_dim*5))
     for k in range(len(img_names)):
         img_name = img_names[k]
         if verbose:
@@ -94,32 +115,24 @@ def get_avg_features (img_names, model, z_dim, cuda, bands=5, patch_size=50,
         img_shape = img.shape
         offset_row = (img_shape[0] - 300) // 2
         offset_col = (img_shape[1] - 300) // 2
-        output = np.zeros((1,z_dim))
+        output = np.zeros((36,z_dim))
         for i in range(6):
             for j in range(6):
                 start_row = i*50 + offset_row
                 end_row = (i+1)*50 + offset_row
                 start_col = j*50 + offset_col
                 end_col = (j+1)*50 + offset_col
-                # print("Rows: " + str((start_row,end_row)))
-                # print("Cols: " + str((start_col,end_col)))
                 patch = img[start_row:end_row,start_col:end_col,:]
-                # patch = img[i*50:(i+1)*50,j*50:(j+1)*50,:]
-                patch = np.moveaxis(patch, -1, 0)
-                patch = np.expand_dims(patch, axis=0)
-                patch = clip_and_scale_image(patch, 'landsat')
-                # Embed tile
-                patch = torch.from_numpy(patch).float()
-                patch = Variable(patch)
-                if cuda: patch = patch.cuda()
-                z = model.encode(patch)
-                if cuda: z = z.cpu()
-                z = z.data.numpy()
-                output += z
-        output = output / 6*6
+                output[(i+1)*(j+1)-1] = process_patch_features (model, patch,
+                                                                cuda)
+        if quantile:
+            output = compute_quantile(output)
+        else:
+            output = np.expand_dims(np.average(output, axis=0),0)
         X[k] = output
     return X
 
+# old, didn't work as well
 def get_emax_features (img_names, model, z_dim, cuda, bands=5, patch_size=50,
                       patch_per_img=36, save=True, verbose=False, npy=True):
     model.eval()
