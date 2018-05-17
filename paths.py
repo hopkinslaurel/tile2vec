@@ -25,3 +25,4 @@ model_dir = home_dir + "/models/"
 
 # for regression
 lsms_data = home_dir + "/lsms/uganda_lsms/"
+original_data = home_dir + "/lsms/original_lsms/"
