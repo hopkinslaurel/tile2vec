@@ -16,7 +16,6 @@ import random
 import numpy as np
 from fig_utils import *
 from src.datasets import triplet_dataloader
-from src.tilenet import make_tilenet
 from src.training import train_model, validate_model, prep_triplets
 from utils import *
 import paths
@@ -35,10 +34,18 @@ parser.add_argument('-debug', action='store_true')
 parser.add_argument('--model_fn', dest='model_fn')
 parser.add_argument('--exp_name', dest='exp_name')
 parser.add_argument('--epochs', dest="epochs", type=int, default=50)
+parser.add_argument('--z_dim', dest="z_dim", type=int, default=512)
 parser.add_argument('--trials', dest="trials", type=int, default=10)
 parser.add_argument('-save_models', action='store_true')
+parser.add_argument('--model', dest="model", default="tilenet")
+
+
 args = parser.parse_args()
 print(args)
+if args.model == "minires":
+    from src.minires import make_tilenet
+else:
+    from src.tilenet import make_tilenet
 
 if not args.save_models:
     print("NOT SAVING CHECKPOINTS")
@@ -101,8 +108,7 @@ if args.test_lsms:
 
 # Training Parameters
 in_channels = bands
-z_dim = 512
-TileNet = make_tilenet(in_channels=in_channels, z_dim=z_dim)
+TileNet = make_tilenet(in_channels=in_channels, z_dim=args.z_dim)
 if cuda: TileNet.cuda()
 
 if args.model_fn:
@@ -179,7 +185,7 @@ for epoch in range(0, args.epochs):
         print("Generating LSMS Small Features")
         img_names = [paths.lsms_images + 'landsat7_uganda_3yr_cluster_' \
                      + str(i) + '.tif' for i in range(test_imgs)]
-        X = get_small_features(img_names, TileNet, z_dim, cuda, bands,
+        X = get_small_features(img_names, TileNet, args.z_dim, cuda, bands,
                                patch_size=50, patch_per_img=10, save=True,
                                verbose=False, npy=False, quantile=args.quantile)
         np.save(paths.lsms_data + 'cluster_conv_features.npy', X)
@@ -202,10 +208,10 @@ for epoch in range(0, args.epochs):
 
     if args.predict_big:
         # Big Image Features
-        print("Generating LSMS Average Features")
+        print("Generating LSMS Big Image Features")
         img_names = [paths.lsms_images_big + 'landsat7_uganda_3yr_cluster_' \
                      + str(i) + '.tif' for i in range(test_imgs)]
-        X = get_big_features(img_names, TileNet, z_dim, cuda, bands,
+        X = get_big_features(img_names, TileNet, args.z_dim, cuda, bands,
                              patch_size=50, patch_per_img=10, save=True,
                              verbose=False, npy=False, quantile=args.quantile)
         np.save(paths.lsms_data + 'cluster_conv_features.npy', X)
@@ -247,7 +253,7 @@ for epoch in range(0, args.epochs):
         if args.test_lsms:
             with open(save_dir + '/lsms_loss.p', 'wb') as f:
                 pickle.dump(lsms_loss, f)
-        if args.predict:
+        if args.predict_big or args.predict_small:
             with open(save_dir + '/r2_' + str(epoch) + '.p', 'wb') as f:
                 pickle.dump(r2_list, f)
             with open(save_dir + '/mse_' + str(epoch) + '.p', 'wb') as f:
