@@ -33,7 +33,8 @@ parser.add_argument('-quantile', action='store_true')
 parser.add_argument('-debug', action='store_true')
 parser.add_argument('--model_fn', dest='model_fn')
 parser.add_argument('--exp_name', dest='exp_name')
-parser.add_argument('--epochs', dest="epochs", type=int, default=50)
+parser.add_argument('--epochs_end', dest="epochs_end", type=int, default=50)
+parser.add_argument('--epochs_start', dest="epochs_start", type=int, default=0)
 parser.add_argument('--z_dim', dest="z_dim", type=int, default=512)
 parser.add_argument('--trials', dest="trials", type=int, default=10)
 parser.add_argument('-save_models', action='store_true')
@@ -44,6 +45,8 @@ args = parser.parse_args()
 print(args)
 if args.model == "minires":
     from src.minires import make_tilenet
+elif args.model == "miniminires":
+    from src.miniminires import make_tilenet
 else:
     from src.tilenet import make_tilenet
 
@@ -152,7 +155,7 @@ mse_list = {'big':{},'small':{}}
 save_dir = paths.model_dir + args.exp_name + '/'
 
 # Train
-for epoch in range(0, args.epochs):
+for epoch in range(args.epochs_start, args.epochs_end):
     if args.train:
         avg_loss_train = train_model(TileNet, cuda, train_dataloader, optimizer,
                                      epoch+1, margin=margin, l2=l2,
@@ -181,6 +184,7 @@ for epoch in range(0, args.epochs):
                                    "lsms":avg_loss_lsms}, epoch)
 
     if args.predict_small:
+        epoch_idx = epoch - args.epochs_start
         # Small Image Features
         print("Generating LSMS Small Features")
         img_names = [paths.lsms_images + 'landsat7_uganda_3yr_cluster_' \
@@ -190,8 +194,8 @@ for epoch in range(0, args.epochs):
                                verbose=False, npy=False, quantile=args.quantile)
         np.save(paths.lsms_data + 'cluster_conv_features.npy', X)
 
-        r2_list['small'][epoch] = []
-        mse_list['small'][epoch] = []
+        r2_list['small'][epoch_idx] = []
+        mse_list['small'][epoch_idx] = []
         for i in range(args.trials):
             X, y, y_hat, r2, mse = predict_consumption(country, country_path,
                                                        dimension, k, k_inner,
@@ -199,15 +203,22 @@ for epoch in range(0, args.epochs):
                                                        alpha_high,
                                                        regression_margin)
 
-            r2_list['small'][epoch].append(r2)
-            mse_list['small'][epoch].append(mse)
-        with open(save_dir + '/y_small_e' + str(epoch) + '.p', 'wb') as f:
-            pickle.dump((y, y_hat, r2),f)
-        print("Small r2: " + str(r2_list['small'][epoch]))
-        print("Small mse: " + str(mse_list['small'][epoch]))
+            r2_list['small'][epoch_idx].append(r2)
+            mse_list['small'][epoch_idx].append(mse)
 
+        mean_r2 = np.mean(r2_list['small'][epoch_idx])
+        mean_mse = np.mean(mse_list['small'][epoch_idx])
+        with open(save_dir + '/y_small_e' + str(epoch) + '.p', 'wb') as f:
+            pickle.dump((y, y_hat, mean_r2),f)
+        print("Small r2: " + str(mean_r2))
+        print("Small mse: " + str(mean_mse))
+        print('adding scalar to ' + str(epoch))
+        writer.add_scalar('r2',mean_r2, epoch)
+        writer.add_scalar('mse',mean_mse, epoch)
+        
     if args.predict_big:
         # Big Image Features
+        epoch_idx = epoch - args.epochs_start
         print("Generating LSMS Big Image Features")
         img_names = [paths.lsms_images_big + 'landsat7_uganda_3yr_cluster_' \
                      + str(i) + '.tif' for i in range(test_imgs)]
@@ -216,8 +227,8 @@ for epoch in range(0, args.epochs):
                              verbose=False, npy=False, quantile=args.quantile)
         np.save(paths.lsms_data + 'cluster_conv_features.npy', X)
 
-        r2_list['big'][epoch] = []
-        mse_list['big'][epoch] = []
+        r2_list['big'][epoch_idx] = []
+        mse_list['big'][epoch_idx] = []
         for i in range(args.trials):
             X, y, y_hat, r2, mse = predict_consumption(country, country_path,
                                                    dimension, k, k_inner,
@@ -227,18 +238,16 @@ for epoch in range(0, args.epochs):
 
             r2_list['big'][epoch].append(r2)
             mse_list['big'][epoch].append(mse)
+
+        mean_r2 = np.mean(r2_list['big'][epoch_idx])
+        mean_mse = np.mean(mse_list['big'][epoch_idx])
         with open(save_dir + '/y_big_e' + str(epoch) + '.p', 'wb') as f:
-            pickle.dump((y, y_hat, r2),f)
-        print("Big r2: " + str(r2_list['big'][epoch]))
-        print("Big mse: " + str(mse_list['big'][epoch]))
+            pickle.dump((y, y_hat, mean_r2),f)
+        print("Big r2: " + str(mean_r2))
+        print("Big mse: " + str(mean_mse))
+        writer.add_scalar('r2',mean_r2, epoch)
+        writer.add_scalar('mse',mean_mse, epoch)
 
-    if args.predict_small and args.predict_big:
-        writer.add_scalars('r2',{"small": np.mean(r2_list['small'][epoch]),
-                                 "big": np.mean(r2_list['big'][epoch])}, epoch)
-
-        writer.add_scalars('mse',{"small": np.mean(mse_list['small'][epoch]),
-                                 "big": np.mean(mse_list['big'][epoch])}, epoch)
-            
     if args.save_models:
         print("Saving")
         save_name = 'TileNet' + str(epoch) + '.ckpt'
