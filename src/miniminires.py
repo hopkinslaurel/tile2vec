@@ -39,14 +39,14 @@ class TileNet(nn.Module):
     def __init__(self, num_blocks, in_channels=4, z_dim=512):
         super(TileNet, self).__init__()
         self.in_channels = in_channels
-        self.in_planes = 32
+        self.in_planes = 16
 
-        self.conv1 = nn.Conv2d(self.in_channels, 32, kernel_size=3, stride=1,
+        self.conv1 = nn.Conv2d(self.in_channels, 16, kernel_size=3, stride=2,
             padding=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(32)
-        self.layer1 = self._make_layer(32, num_blocks[0], stride=1)
-        self.layer2 = self._make_layer(64, num_blocks[1], stride=2)
-        self.layer3 = self._make_layer(64, num_blocks[2], stride=2)
+        self.bn1 = nn.BatchNorm2d(16)
+        self.layer1 = self._make_layer(32, num_blocks[0], stride=2)
+        #self.layer2 = self._make_layer(64, num_blocks[1], stride=2)
+        #self.layer3 = self._make_layer(64, num_blocks[2], stride=2)
         self.layer4 = nn.AvgPool2d(3)
         
     def _make_layer(self, planes, num_blocks, stride, no_relu=False):
@@ -60,8 +60,8 @@ class TileNet(nn.Module):
     def encode(self, x):
         x = F.relu(self.bn1(self.conv1(x)))
         x = self.layer1(x)
-        x = self.layer2(x)
-        x = self.layer3(x)
+        #x = self.layer2(x)
+        #x = self.layer3(x)
         x = self.layer4(x)
         z = x.view(x.size(0), -1)
         return z
