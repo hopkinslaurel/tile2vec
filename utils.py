@@ -66,12 +66,13 @@ def process_patch_features (model, patch, cuda):
     return z
 
 def compute_quantile(output):
-    qvec = np.zeros((1,output.shape[1]*5))
+    qvec = np.zeros((1,output.shape[1]*6))
     i = 0
     for q in [0, 25, 50, 75, 100]:
         for j in range(output.shape[1]):
             qvec[0][i] = np.percentile(output[:,j], q)
             i += 1    
+    qvec[0][i:] = np.expand_dims(np.average(output, axis=0),0)
     return qvec
             
 def get_small_features (img_names, model, z_dim, cuda, bands=7, patch_size=50,
@@ -80,7 +81,7 @@ def get_small_features (img_names, model, z_dim, cuda, bands=7, patch_size=50,
     model.eval()
     X = np.zeros((len(img_names), z_dim))
     if quantile:
-        X = np.zeros((len(img_names), z_dim*5))
+        X = np.zeros((len(img_names), z_dim*6))
     for k in range(len(img_names)):
         img_name = img_names[k]
         if verbose:
@@ -106,7 +107,7 @@ def get_big_features (img_names, model, z_dim, cuda, bands=5, patch_size=50,
     model.eval()
     X = np.zeros((len(img_names), z_dim))
     if quantile:
-        X = np.zeros((len(img_names), z_dim*5))
+        X = np.zeros((len(img_names), z_dim*6))
     for k in range(len(img_names)):
         img_name = img_names[k]
         if verbose:
