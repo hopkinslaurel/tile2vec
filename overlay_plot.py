@@ -41,7 +41,7 @@ def overlay(country, y1, y1_hat, r2_1, y2, y2_hat, r2_2,  margin, overlay=False)
     plt.ylim(min(y1min,y2min), max(y1max,y2max))
     plt.xlabel('Log consumption expenditures', fontsize=14)
     plt.ylabel('Model predictions', fontsize=14)
-    plt.title(country.capitalize() + ': $r^2s = {0:.2f}$'.format(r2_1))
+    plt.title(country.capitalize() + ': $r^2 = {0:.3f}$'.format(r2_1))
     plt.show()
     plt.savefig('overlay.png')
     plt.close("all")
@@ -62,7 +62,7 @@ X, y1, y1_hat, r2_1, mse = predict_consumption(country, country_path,
                                                alpha_high,
                                                regression_margin)
 print(r2_1)
-with open('models/practice/y_small_e0.p','rb') as f:
+with open('models/practice/y_small_e50.p','rb') as f:
     y2, y2_hat, r2_2 = pickle.load(f)
 print(r2_2)
 overlay(country, y1, y1_hat, r2_1, y2, y2_hat, r2_2, regression_margin)
