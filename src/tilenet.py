@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
-
+from torchsummary import summary
 
 class ResidualBlock(nn.Module):
     def __init__(self, in_planes, planes, stride=1):
@@ -104,3 +104,6 @@ def make_tilenet(in_channels=4, z_dim=512):
     num_blocks = [2, 2, 2, 2, 2]
     return TileNet(num_blocks, in_channels=in_channels, z_dim=z_dim)
 
+#a = make_tilenet(5)
+#a.cuda()
+#summary(a,(5,50,50))
