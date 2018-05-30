@@ -11,6 +11,7 @@ test_images = data_dir + "npy/test/" # contains test images
 lsms_images = data_dir + "tif/uganda_lsms/" # contains lsms images
 lsms_images_big = data_dir + "tif/uganda_lsms_big/" # contains big images
 train_tiles = data_dir + "tiles/train/" # train tiles (triplets)
+val_tiles = data_dir + "tiles/val/" # val tiles (triplets)
 test_tiles = data_dir + "tiles/test/" # test tiles (triplets)
 lsms_tiles = data_dir + "tiles/lsms/" # lsms tiles (triplets)
 

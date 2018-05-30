@@ -12,6 +12,21 @@ from utils import *
 import paths
 import matplotlib.pyplot as plt
 import colorsys
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument('-train', action='store_true')
+parser.add_argument('--ntrain', dest='ntrain', type=int, default=100000)
+parser.add_argument('-val', action='store_true')
+parser.add_argument('--nval', dest='nval', type=int, default=10000)
+parser.add_argument('-test',  action='store_true')
+parser.add_argument('--ntest', dest='ntest', type=int, default=10000)
+parser.add_argument('-lsms',  action='store_true')
+parser.add_argument('--nlsms', dest='nlsms', type=int, default=10000)
+parser.add_argument('--nghbr', dest='nghbr', type=int, default=50)
+parser.add_argument('-debug',  action='store_true')
+args = parser.parse_args()
+print(args)
 
 # Assumes 8x8 grid of clusters (of 16x16 .npy files, row major order)
 def get_coord (filename):
@@ -116,27 +131,43 @@ def sample_neighbor(img_shape, xa, ya, neighborhood, tile_radius):
     return xn, yn
 
 # Run
-# np.random.seed(1)
+if args.debug:
+    np.random.seed(1)
+    
 color_map = np.zeros((8*16,8*16,3))
 test_map(color_map)
 
 bands = 11
-print("Generating Train Set")
-tiles_train = get_triplets(paths.train_images, paths.train_tiles,
-                           10000, bands, tile_size = 50, neighborhood = 50,
-                           npy = True, color_map=color_map)
+
+if args.train:
+    print("Generating Train Set")
+    tiles_train = get_triplets(paths.train_images, paths.train_tiles,
+                               args.ntrain, bands, tile_size = 50,
+                               neighborhood = args.nghbr,
+                               npy = True, color_map=color_map)
 print(np.amax(color_map))
 plt.imsave('color_map.jpg', color_map[0:100,0:100,:])
 
-print("Generating Test Set")
-tiles_test = get_triplets(paths.test_images, paths.test_tiles, 
-                          10000, bands, tile_size = 50,
-                          neighborhood = 50, npy = True, color_map=None)
+if args.val:
+    print("Generating Val Set")
+    tiles_val = get_triplets(paths.train_images, paths.val_tiles, args.nval,
+                               bands, tile_size = 50, neighborhood = args.nghbr,
+                               npy = True, color_map=color_map)
 
-print("Generating LSMS Set")
-tiles_lsms = get_triplets(paths.lsms_images, paths.lsms_tiles, 
-                          10000, bands, tile_size =50,
-                          neighborhood=50, npy=False, color_map=None)
+    
+if args.test:
+    print("Generating Test Set")
+    tiles_test = get_triplets(paths.test_images, paths.test_tiles, 
+                              args.ntest, bands, tile_size = 50,
+                              neighborhood = args.nghbr, npy = True,
+                              color_map=None)
+
+if args.lsms:
+    print("Generating LSMS Set")
+    tiles_lsms = get_triplets(paths.lsms_images, paths.lsms_tiles, 
+                              args.nlsms, bands, tile_size =50,
+                              neighborhood = args.nghbr, npy=False,
+                              color_map=None)
 
 
 
