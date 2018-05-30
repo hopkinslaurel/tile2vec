@@ -1,7 +1,7 @@
 # run.py
 # =============================================================================
 # Original code by Neal Jean/Sherrie Wang (see example 2 notebook in tile2vec
-# repo). Minor edits and extensions by Anshul Samar. 
+# repo). Edits and extensions by Anshul Samar. 
 
 import sys
 tile2vec_dir = '/home/asamar/tile2vec'
@@ -24,22 +24,31 @@ import argparse
 import pickle
 
 parser = argparse.ArgumentParser()
+
+# Training
 parser.add_argument('-train', action='store_true')
+parser.add_argument('--ntrain', dest='ntrain', type=int, default=100000)
 parser.add_argument('-test',  action='store_true')
 parser.add_argument('-test_lsms',  action='store_true')
+parser.add_argument('--ntest', dest='ntest', type=int, default=10000)
+
+# Regression
 parser.add_argument('-predict_small', action='store_true')
 parser.add_argument('-predict_big', action='store_true')
 parser.add_argument('-quantile', action='store_true')
-parser.add_argument('-debug', action='store_true')
+parser.add_argument('--trials', dest="trials", type=int, default=10)
+
+# Model
 parser.add_argument('--model_fn', dest='model_fn')
 parser.add_argument('--exp_name', dest='exp_name')
 parser.add_argument('--epochs_end', dest="epochs_end", type=int, default=50)
 parser.add_argument('--epochs_start', dest="epochs_start", type=int, default=0)
 parser.add_argument('--z_dim', dest="z_dim", type=int, default=512)
-parser.add_argument('--trials', dest="trials", type=int, default=10)
 parser.add_argument('-save_models', action='store_true')
 parser.add_argument('--model', dest="model", default="tilenet")
 
+# Env
+parser.add_argument('-debug', action='store_true')
 
 args = parser.parse_args()
 print(args)
@@ -73,8 +82,6 @@ augment = True
 batch_size = 50
 shuffle = True
 num_workers = 4
-n_triplets_train = 100000
-n_triplets_test = 10000
 
 if args.train:
     train_dataloader = triplet_dataloader(img_type, paths.train_tiles,
@@ -82,7 +89,7 @@ if args.train:
                                           batch_size=batch_size,
                                           shuffle=shuffle,
                                           num_workers=num_workers,
-                                          n_triplets=n_triplets_train,
+                                          n_triplets=args.ntrain,
                                           pairs_only=True)
 
     print('Train Dataloader set up complete.')
@@ -93,7 +100,7 @@ if args.test:
                                          batch_size=batch_size,
                                          shuffle=shuffle,
                                          num_workers=num_workers,
-                                         n_triplets=n_triplets_test,
+                                         n_triplets=args.ntest,
                                          pairs_only=True)
 
     print('Test Dataloader set up complete.')
@@ -104,7 +111,7 @@ if args.test_lsms:
                                          batch_size=batch_size,
                                          shuffle=shuffle,
                                          num_workers=num_workers,
-                                         n_triplets=n_triplets_test,
+                                         n_triplets=args.ntest,
                                          pairs_only=True)
 
     print('LSMS Dataloader set up complete.')
@@ -212,7 +219,6 @@ for epoch in range(args.epochs_start, args.epochs_end):
             pickle.dump((y, y_hat, mean_r2),f)
         print("Small r2: " + str(mean_r2))
         print("Small mse: " + str(mean_mse))
-        print('adding scalar to ' + str(epoch))
         writer.add_scalar('r2',mean_r2, epoch)
         writer.add_scalar('mse',mean_mse, epoch)
         
