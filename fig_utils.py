@@ -1,15 +1,17 @@
 # fig_utils: predicting-poverty repo (author: Neal Jean)
-# EXPERIMENTAL/NOT TESTED/POSSIBLE BUGS due to Anshul
-# Anshul Samar: Added some edits to include MSE.
-# To re-create figure B of science paper, added Tile2Vec
-# curve. See poverty_plot on script to call this.
-# Manually putting in PCA dimension 10 for the "X_tf" data
-# (tf = transfer learning).
-# Unclean code/paths are hardcoded in. DHS will no longer work.
-# Assumes that both folders in lsms/ use the same underlying data
-# for masking, etc. 
-# I am getting runtime error with scipy stats when running this
+# copy pasted from fig_utils, with some edits - 
+# This is not fully tested/experimental -
+# To re-create figure 4A of science paper, I added
+# Tile2Vec curve and manually put in PCA dimension of 10
+# for all X_tf data. Note that DHS will no longer
+# work. 
+# I am getting runtime warning with scipy stats when running this
 # w/ poverty_plot "invalid value encountered"
+# Normally the setup is that you generate conv_features.npy file
+# and that gets used. With predict_consumption you can now pass in
+# an experiment name to specify which conv_features file.
+# This needs to be updated for poverty curve plotting
+# which currently is not passing in experiment names.
 
 import numpy as np
 import pandas as pd
@@ -30,18 +32,18 @@ import seaborn as sns
 
 def predict_consumption(
     country, country_path, dimension=None, k=5, k_inner=5, points=10,
-        alpha_low=1, alpha_high=5, margin=0.25):
+        alpha_low=1, alpha_high=5, margin=0.25, exp=None):
     """
     Plots predicted consumption
     """
-    X_full, _, _, y = load_country_lsms(country_path)
+    X_full, _, _, y = load_country_lsms(country_path, exp=exp)
     X = reduce_dimension(X_full, dimension)
     y_hat, r2, mse = run_cv(X, y, k, k_inner, points, alpha_low, alpha_high)
     plot_predictions(country, y, y_hat, r2, margin)
     return X, y, y_hat, r2, mse
 
 
-def plot_predictions(country, y, y_hat, r2, margin):
+def plot_predictions(country, y, y_hat, r2, margin, exp=None):
     """
     Plots consumption predictions vs. true values.
     """
@@ -61,7 +63,10 @@ def plot_predictions(country, y, y_hat, r2, margin):
     plt.ylabel('Model predictions', fontsize=14)
     plt.title(country.capitalize() + ': $r^2 = {0:.2f}$'.format(r2))
     plt.show()
-    plt.savefig('prediction.png')
+    if exp is not None:
+        plt.savefig('prediction_' + exp + '.png')
+    else:
+        plt.savefig('prediction.png')
     plt.close("all")
 
 
@@ -109,7 +114,7 @@ def load_and_reduce_country_by_percentile(
         X, X_nl, y = load_country_dhs(country_path)
     X, X_nl, X_tf, y = threshold_by_percentile(X, X_nl, X_tf, y, percentile)
     X = reduce_dimension(X, dimension)
-    X_tf = reduce_dimension(X, 10) #did this extra step
+    X_tf = reduce_dimension(X, 10) #adding this extra step
     return X, X_nl, X_tf, y
 
 
@@ -524,11 +529,14 @@ def load_data(country_paths, survey, dimension):
     return data
 
 
-def load_country_lsms(country_path):
+def load_country_lsms(country_path, exp=None):
     """
     Loads data for one LSMS country.
     """
-    X = np.load(country_path + 'cluster_conv_features.npy')
+    if exp is not None:
+        X = np.load(country_path + 'cluster_conv_features_' + exp + '.npy')
+    else:
+        X = np.load(country_path + 'cluster_conv_features.npy')
     X_nl = np.load('/home/asamar/tile2vec/lsms/original_lsms/cluster_nightlights.npy').reshape(-1, 1)
     X_tf = np.load('/home/asamar/tile2vec/lsms/original_lsms/cluster_conv_features.npy')
     y = np.load(country_path + 'cluster_consumptions.npy')
