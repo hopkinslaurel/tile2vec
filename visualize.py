@@ -9,7 +9,6 @@ import torchvision.utils as vutils
 from fig_utils import load_country_lsms
 import math
 from tensorboardX import SummaryWriter
-from x2num import makenp
 
 writer_data = SummaryWriter(paths.log_dir + 'data')
 writer_lsms = SummaryWriter(paths.log_dir + 'lsms')
@@ -32,7 +31,8 @@ def visualize_raw(num_images, img_path, tag):
 
 visualize_raw(10, paths.train_tiles, 'train')
 visualize_raw(10, paths.test_tiles, 'test')
-visualize_raw(10, paths.lsms_tiles, 'lsms')
+visualize_raw(10, paths.lsms_train_tiles, 'lsms_train')
+#visualize_raw(10, paths.lsms_test_tiles, 'lsms_test')
 
 def visualize_lsms(num_images, img_path, tag, X, y, max_len):
     data = torch.zeros(num_images, 3, max_len, max_len)
@@ -48,10 +48,10 @@ def visualize_lsms(num_images, img_path, tag, X, y, max_len):
         writer_lsms.add_embedding(X[:num_images], metadata=y[:num_images],
                               label_img=data, tag=tag)
 
-X, _, y = load_country_lsms(paths.lsms_data)
-X = torch.from_numpy(X)
-y = np.ndarray.tolist(y)
-visualize_lsms(10, paths.lsms_images, 'last_exp', X, y, 74)
+#X, _, y = load_country_lsms(paths.lsms_data)
+#X = torch.from_numpy(X)
+#y = np.ndarray.tolist(y)
+#visualize_lsms(10, paths.lsms_images, 'last_exp', X, y, 74)
                        
 def sanity():
     for i in range(0,3):
