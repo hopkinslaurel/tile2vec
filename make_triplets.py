@@ -10,9 +10,13 @@ import os
 import random
 from utils import *
 import paths
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-import colorsys
+from matplotlib import colors
 import argparse
+import datetime
+import pickle
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-train', action='store_true')
@@ -21,10 +25,13 @@ parser.add_argument('-val', action='store_true')
 parser.add_argument('--nval', dest='nval', type=int, default=10000)
 parser.add_argument('-test',  action='store_true')
 parser.add_argument('--ntest', dest='ntest', type=int, default=10000)
-parser.add_argument('-lsms',  action='store_true')
-parser.add_argument('--nlsms', dest='nlsms', type=int, default=10000)
+parser.add_argument('-lsms_train',  action='store_true')
+parser.add_argument('--nlsms_train', dest='nlsms_train', type=int, default=10000)
+parser.add_argument('-lsms_val',  action='store_true')
+parser.add_argument('--nlsms_val', dest='nlsms_val', type=int, default=10000)
 parser.add_argument('--nghbr', dest='nghbr', type=int, default=50)
 parser.add_argument('-debug',  action='store_true')
+parser.add_argument('-color_map',  action='store_true')
 args = parser.parse_args()
 print(args)
 
@@ -40,51 +47,51 @@ def get_coord (filename):
     return cluster_row*16 + image_row, cluster_col*16 + image_col
 
 def train_map(color_map):
+    count = 0
     for filename in sorted(os.listdir(paths.train_images)):
         if filename.endswith('.npy'):
             row, col = get_coord(filename)
-            color_map[row][col][0] = 10
-            color_map[row][col][1] = 10
-            color_map[row][col][2] = 10
+            color_map[row][col] = 1
+            color_map[row][col] = 1
+            color_map[row][col] = 1
+            count += 1
+    print(str("Files: ") + str(count))
 
 def test_map(color_map):
+    count = 0
     for filename in sorted(os.listdir(paths.test_images)):
         if filename.endswith('.npy'):
             row, col = get_coord(filename)
-            color_map[row][col][0] = 0
-            color_map[row][col][1] = 0
-            color_map[row][col][2] = 0
+            color_map[row][col] = 3
+            color_map[row][col] = 3
+            color_map[row][col] = 3
+            count += 1
+    print(str("Files: ") + str(count))
 
-def update_color_map(row, col, seen_train, color_map):
-    if (row,col) not in seen_train:
-        color_map[row][col][0] = .6
-        color_map[row][col][1] = .6
-        color_map[row][col][2] = .6
-        seen_train.add((row,col))
-    else:
-        # h, l, s = colorsys.rgb_to_hls(color_map[row][col][0],
-        # color_map[row][col][1],
-        # color_map[row][col][2])
-        # r, g, b = colorsys.hls_to_rgb(h, l + .1, s)
-        color_map[row][col][0] += .05
-        color_map[row][col][1] += .05
-        color_map[row][col][2] += .05
-
-        
 def get_triplets (data_dir, tile_dir, num_triplets, bands=7, tile_size=50,
-                       neighborhood=125, npy=True, color_map=None, channel=None):
+                       neighborhood=125, npy=True, map_type=""):
     size_even = (tile_size % 2 == 0)
     tile_radius = tile_size // 2
     tiles = np.zeros((num_triplets, 3, 2), dtype=np.int16)
     grid = sorted(os.listdir(data_dir))
-    seen_train = set()
+    seen = set()
     for i in range(0, num_triplets):
         near_img, far_img = np.random.choice(grid, 2, replace=False)
-        if color_map is not None:
+        if map_type in ["train","val","test"] and color_map is not None:
             row, col = get_coord(near_img)
-            update_color_map(row, col, seen_train, color_map)
+            if (row,col) not in seen:
+                seen.add((row,col))
+            if map_type == "train":
+                color_map[row][col] = 2
+            elif map_type == "test":
+                color_map[row][col] = 4
             row, col = get_coord(far_img)
-            update_color_map(row, col, seen_train, color_map)
+            if (row,col) not in seen:
+                seen.add((row,col))
+            if map_type == "train":
+                color_map[row][col] = 2
+            elif map_type == "test":
+                color_map[row][col] = 4
         print(str(i) + ": " + str(near_img) + "," + str(far_img))
         near_img = load_landsat(data_dir + near_img, bands, bands_only=True, is_npy=npy)
         far_img = load_landsat(data_dir + far_img, bands, bands_only=True, is_npy=npy)
@@ -107,7 +114,7 @@ def get_triplets (data_dir, tile_dir, num_triplets, bands=7, tile_size=50,
         tiles[i,0,:] = xa, ya
         tiles[i,1,:] = xn, yn
         tiles[i,2,:] = xd, yd
-    print(len(seen_train))
+    print(len(seen))
     return tiles
 
 def sample_tile(img_shape, tile_radius):
@@ -133,42 +140,65 @@ def sample_neighbor(img_shape, xa, ya, neighborhood, tile_radius):
 # Run
 if args.debug:
     np.random.seed(1)
-    
-color_map = np.zeros((8*16,8*16,3))
-test_map(color_map)
 
+# Color Map (thanks stackoverflow user @umutto)
+
+color_map = np.zeros((8*16,8*16))
+cmap = colors.ListedColormap(['xkcd:black', 'xkcd:light blue',
+                              'xkcd:bright blue',
+                              'xkcd:spring green', 'xkcd:green'])
+bounds = [0,1,2,3,4,5]
+norm = colors.BoundaryNorm(bounds, cmap.N)
+fig, ax = plt.subplots(figsize=(8,8))
 bands = 11
 
 if args.train:
     print("Generating Train Set")
+    train_map(color_map)  
     tiles_train = get_triplets(paths.train_images, paths.train_tiles,
                                args.ntrain, bands, tile_size = 50,
                                neighborhood = args.nghbr,
-                               npy = True, color_map=color_map)
-print(np.amax(color_map))
-plt.imsave('color_map.jpg', color_map[0:100,0:100,:])
+                               npy = True, map_type="train")
 
 if args.val:
     print("Generating Val Set")
     tiles_val = get_triplets(paths.train_images, paths.val_tiles, args.nval,
                                bands, tile_size = 50, neighborhood = args.nghbr,
-                               npy = True, color_map=color_map)
+                               npy = True, map_type="val")
 
     
 if args.test:
     print("Generating Test Set")
+    test_map(color_map)
     tiles_test = get_triplets(paths.test_images, paths.test_tiles, 
                               args.ntest, bands, tile_size = 50,
                               neighborhood = args.nghbr, npy = True,
-                              color_map=None)
+                              map_type = "test")
 
-if args.lsms:
-    print("Generating LSMS Set")
-    tiles_lsms = get_triplets(paths.lsms_images, paths.lsms_tiles, 
-                              args.nlsms, bands, tile_size =50,
-                              neighborhood = args.nghbr, npy=False,
-                              color_map=None)
+if args.lsms_train:
+    print("Generating LSMS Train Set")
+    tiles_lsms = get_triplets(paths.lsms_images_big, paths.lsms_train_tiles, 
+                              args.nlsms_train, bands, tile_size = 50,
+                              neighborhood = args.nghbr, npy= False,
+                              map_type = "lsms")
 
+if args.lsms_val:
+    print("Generating LSMS Val Set")
+    tiles_lsms = get_triplets(paths.lsms_images_big, paths.lsms_val_tiles, 
+                              args.nlsms_val, bands, tile_size = 50,
+                              neighborhood = args.nghbr, npy= False,
+                              map_type = "lsms")
 
-
+    
+ax.imshow(color_map, cmap=cmap, norm=norm)
+now = datetime.datetime.now()
+ax.axis('off')
+#ax.yaxis.grid(which="major", color='black', linestyle='-', linewidth=1)
+#ax.xaxis.grid(which="major", color='black', linestyle='-', linewidth=1)
+#ax.set_xticks(np.arange(0, 8*16, 16));
+#ax.set_yticks(np.arange(0, 8*16, 16));
+plt.savefig("color_map_" + now.isoformat() + ".png")
+with open("color_map_" + now.isoformat() + ".p","wb") as f:
+    pickle.dump(color_map,f)
+    
                     
