@@ -4,8 +4,8 @@
 # with given width/height. For example, if exported .tif files are 1000x1000
 # you can convert them into ten 100x100 npy arrays.
 # Example: use process_data.py on all uganda tif files. Then, to do a split:
-# use mv `ls | shuf | head -NUM` paths.train_data. Move remaining images to
-# paths.test_data. 
+# use mv `ls | shuf | head -NUM` [dest_folder]. Move remaining images to
+# the other folder. 
 
 import gdal
 import numpy as np
