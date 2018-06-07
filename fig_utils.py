@@ -127,7 +127,7 @@ def evaluate_percentiles(
     r2s_nl = np.zeros((len(percentiles), trials))
     r2s_tf = np.zeros((len(percentiles), trials))
     for idx, percentile in enumerate(percentiles):
-        for trial in xrange(trials):
+        for trial in range(trials):
             X, X_nl, X_tf, y = load_and_reduce_country_by_percentile(
                 country_path, survey, percentile, dimension, exp=exp)
             _, r2, _ = run_cv(
