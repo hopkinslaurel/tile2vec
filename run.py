@@ -55,6 +55,7 @@ parser.add_argument('--exp_name', dest='exp_name')
 parser.add_argument('--epochs_end', dest="epochs_end", type=int, default=50)
 parser.add_argument('--epochs_start', dest="epochs_start", type=int, default=0)
 parser.add_argument('-save_models', action='store_true')
+parser.add_argument('--gpu', dest="gpu", type=int, default=0)
 
 # Debug
 parser.add_argument('-debug', action='store_true')
@@ -75,7 +76,8 @@ if not args.save_models:
     print("Not Saving Checkpoints")
 
 # Environment
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
 cuda = torch.cuda.is_available()
 if args.debug:
     torch.manual_seed(1)
