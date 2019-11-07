@@ -111,6 +111,8 @@ def get_triplets (data_dir, tile_dir, num_triplets, bands=7, tile_size=50,
         np.save(os.path.join(tile_dir, '{}neighbor.npy'.format(i)), tile_neighbor)
         np.save(os.path.join(tile_dir, '{}distant.npy'.format(i)), tile_distant)
                 
+        #plt.imsave(paths.fig_dir_test_land + '{}anchor.jpg'.format(i), tile_anchor)
+                
         tiles[i,0,:] = xa, ya
         tiles[i,1,:] = xn, yn
         tiles[i,2,:] = xd, yd
@@ -150,7 +152,7 @@ cmap = colors.ListedColormap(['xkcd:black', 'xkcd:light blue',
 bounds = [0,1,2,3,4,5]
 norm = colors.BoundaryNorm(bounds, cmap.N)
 fig, ax = plt.subplots(figsize=(8,8))
-bands = 11
+bands = 3
 
 if args.train:
     print("Generating Train Set")
@@ -200,5 +202,4 @@ ax.axis('off')
 plt.savefig("color_map_" + now.isoformat() + ".png")
 with open("color_map_" + now.isoformat() + ".p","wb") as f:
     pickle.dump(color_map,f)
-    
-                    
+                

@@ -4,7 +4,9 @@
 # repo). Edits and extensions by Anshul Samar. 
 
 import sys
-tile2vec_dir = '/home/asamar/tile2vec'
+import paths 
+
+tile2vec_dir = paths.home_dir  # '/home/asamar/tile2vec'
 sys.path.append('../')
 sys.path.append(tile2vec_dir)
 
@@ -60,6 +62,9 @@ parser.add_argument('--gpu', dest="gpu", type=int, default=0)
 # Debug
 parser.add_argument('-debug', action='store_true')
 
+# Feature extraction
+parser.add_argument('-extract_small', action='store_true')
+
 args = parser.parse_args()
 print(args)
 
@@ -83,6 +88,7 @@ if args.debug:
     torch.manual_seed(1)
     if cuda:
         # Not tested if this works/see pytorch thread it may not
+        print("Cuda available")
         torch.cuda.manual_seed_all(1)
         torch.backends.cudnn.deterministic = True
 
@@ -90,8 +96,8 @@ if args.debug:
 writer = SummaryWriter(paths.log_dir + args.exp_name)
     
 # Data Parameters
-img_type = 'landsat'
-bands = 5
+img_type = 'rgb'
+bands = 3
 augment = True
 batch_size = 50
 shuffle = True
@@ -177,7 +183,7 @@ if not os.path.exists(paths.model_dir + args.exp_name):
 
 # Regression variables
 lsms = True
-test_imgs = 642
+test_imgs = 1
 patches_per_img = 10
 country = 'uganda'
 country_path = paths.lsms_data
@@ -242,12 +248,29 @@ for epoch in range(args.epochs_start, args.epochs_end):
         lsms_loss_val.append(avg_loss_lsms_val)
         writer.add_scalar('loss/lsms_val',avg_loss_lsms_val, epoch)
         
+    if args.extract_small:
+        epoch_idx = epoch - args.epochs_start
+        # Small Image Features
+        print("Generating LSMS Small Features")
+        img_names = [paths.lsms_images_small + 'naip_oregon_2011_cluster_' \
+                     + str(i) + '.tif' for i in range(test_imgs)]
+        print("predict small: ")
+        print(*img_names)
+        X = get_small_features(img_names, TileNet, args.z_dim, cuda, bands,
+                               patch_size=50, patch_per_img=10, save=True,
+                               verbose=False, npy=False, quantile=args.quantile)
+        print(X)
+        np.save(paths.ebird_features + 'cluster_conv_features_' + args.exp_name +\
+                '.npy', X)
+
     if args.predict_small:
         epoch_idx = epoch - args.epochs_start
         # Small Image Features
         print("Generating LSMS Small Features")
-        img_names = [paths.lsms_images_small + 'landsat7_uganda_3yr_cluster_' \
+        img_names = [paths.lsms_images_small + 'naip_oregon_2011_cluster_' \
                      + str(i) + '.tif' for i in range(test_imgs)]
+        print("predict small: ")
+        print(*img_names)
         X = get_small_features(img_names, TileNet, args.z_dim, cuda, bands,
                                patch_size=50, patch_per_img=10, save=True,
                                verbose=False, npy=False, quantile=args.quantile)
@@ -256,6 +279,7 @@ for epoch in range(args.epochs_start, args.epochs_end):
 
         r2_list['small'][epoch_idx] = []
         mse_list['small'][epoch_idx] = []
+        
         for i in range(args.trials):
             X, y, y_hat, r2, mse = predict_consumption(country, country_path,
                                                        dimension, k, k_inner,

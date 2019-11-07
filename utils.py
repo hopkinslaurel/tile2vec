@@ -7,6 +7,9 @@ from src.data_utils import clip_and_scale_image
 import torch
 from torch.autograd import Variable
 
+import paths
+import matplotlib.pyplot as plt
+
 def sample_patch(img_shape, patch_radius):
     w_padded, h_padded, c = img_shape
     w = w_padded - 2 * patch_radius
@@ -16,8 +19,13 @@ def sample_patch(img_shape, patch_radius):
     return xa, ya
 
 def load_landsat_npy(img_fn, bands, bands_only=False):
+    #print("load_landsat_npy()")
     img = np.load(img_fn)
-    if bands_only: img = img[:,:,:bands]
+    #plt.imsave(paths.fig_dir_test_land + "test.jpg", img)
+    if bands_only: 
+        print("bands only")
+        img = img[:,:,:bands]
+        plt.imsave(paths.fig_dir_test_land + "test_bands.jpg", img)
     return img
 
 def load_landsat(img_fn, bands, bands_only=False, is_npy=True):
@@ -25,6 +33,7 @@ def load_landsat(img_fn, bands, bands_only=False, is_npy=True):
     Loads Landsat image with gdal, returns image as array.
     Move bands (i.e. r,g,b,etc) to last dimension. 
     """
+    #print("load_landsat()")
     if is_npy:
         return load_landsat_npy(img_fn, bands, bands_only)
     obj = gdal.Open(img_fn)
@@ -32,6 +41,7 @@ def load_landsat(img_fn, bands, bands_only=False, is_npy=True):
     del obj # close GDAL dataset
     img = np.moveaxis(img, 0, -1)
     if bands_only: img = img[:,:,:bands]
+    plt.imsave(paths.fig_dir_test_land + "cluster_test.jpg", img)
     return img
 
 def extract_patch(img_padded, x0, y0, patch_radius):

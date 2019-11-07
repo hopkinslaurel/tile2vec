@@ -33,6 +33,9 @@ def prep_triplets(triplets, cuda):
     and puts them on GPU if available.
     """
     a, n, d = (Variable(triplets['anchor']), Variable(triplets['neighbor']), Variable(triplets['distant']))
+    
+    #print("prep_triplets")
+    #print(a.size())
     if cuda:
     	a, n, d = (a.cuda(), n.cuda(), d.cuda())
     return (a, n, d)
@@ -53,12 +56,15 @@ def train_model(model, cuda, dataloader, optimizer, epoch, margin=1,
         p, n, d = prep_triplets(triplets, cuda)
         optimizer.zero_grad()
         loss, l_n, l_d, l_nd = model.loss(p, n, d, margin=margin, l2=l2)
+        #print("loss: ")
+        #print(loss, l_n, l_d, l_nd)
+        #print(loss.item(), l_n.item(), l_d.item(), l_nd.item())
         loss.backward()
         optimizer.step()
-        sum_loss += loss.data[0]
-        sum_l_n += l_n.data[0]
-        sum_l_d += l_d.data[0]
-        sum_l_nd += l_nd.data[0]
+        sum_loss += loss.item()  #data[0]
+        sum_l_n += l_n.item()  #data[0]
+        sum_l_d += l_d.item()  #data[0]
+        sum_l_nd += l_nd.item()  #data[0]
         #if (idx + 1) * dataloader.batch_size % print_every == 0:
         #    print_avg_loss = (sum_loss - print_sum_loss) / (
         #        print_every / dataloader.batch_size)
@@ -92,10 +98,10 @@ def validate_model(model, cuda, dataloader, optimizer, epoch, margin=1,
     for idx, triplets in enumerate(dataloader):
         p, n, d = prep_triplets(triplets, cuda)
         loss, l_n, l_d, l_nd = model.loss(p, n, d, margin=margin, l2=l2)
-        sum_loss += loss.data[0]
-        sum_l_n += l_n.data[0]
-        sum_l_d += l_d.data[0]
-        sum_l_nd += l_nd.data[0]
+        sum_loss += loss.item()  #data[0]
+        sum_l_n += l_n.item()  #data[0]
+        sum_l_d += l_d.item()  #data[0]
+        sum_l_nd += l_nd.item()  #data[0]
     avg_loss = sum_loss / n_batches
     avg_l_n = sum_l_n / n_batches
     avg_l_d = sum_l_d / n_batches

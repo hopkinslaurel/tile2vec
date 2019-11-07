@@ -6,6 +6,8 @@ import os
 import numpy as np
 from src.data_utils import clip_and_scale_image
 
+import matplotlib.pyplot as plt
+import paths
 
 class TileTripletsDataset(Dataset):
 
@@ -34,6 +36,11 @@ class TileTripletsDataset(Dataset):
         n = np.moveaxis(n, -1, 0)
         d = np.moveaxis(d, -1, 0)
         sample = {'anchor': a, 'neighbor': n, 'distant': d}
+        
+        #plt.imsave(paths.fig_dir_test_land + '{}_loader_anchor.jpg'.format(idx), a)
+        #plt.imsave(paths.fig_dir_test_land + '{}_loader_neighbor.jpg'.format(idx), n)
+        #plt.imsave(paths.fig_dir_test_land + '{}_loader_distant.jpg'.format(idx), d)
+        
         if self.transform:
             sample = self.transform(sample)
         return sample

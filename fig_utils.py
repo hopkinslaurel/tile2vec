@@ -2,7 +2,7 @@
 # copy pasted from fig_utils, removing unneeded parts
 # To re-create figure 4A of science paper, I added
 # Tile2Vec curve and manually put in PCA dimension of 10
-# for all X_tf data. 
+# for all X_tf data.
 # I am getting runtime warning with scipy stats when running this
 # w/ poverty_plot "invalid value encountered"
 
@@ -12,7 +12,8 @@ import random
 from scipy import stats
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
-from sklearn import cross_validation, linear_model
+from sklearn import linear_model
+from sklearn.model_selection import cross_validate
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -61,7 +62,6 @@ def plot_predictions(country, y, y_hat, r2, margin, exp=None):
     else:
         plt.savefig('prediction.png')
     plt.close("all")
-
 
 def compute_plot_params(y, y_hat, margin):
     """
@@ -151,7 +151,7 @@ def run_cv_ols(X, y, k):
     Runs OLS in cross-validation to compute r-squared.
     """
     r2s = np.zeros((k,))
-    kf = cross_validation.KFold(n=y.size, n_folds=k, shuffle=True)
+    kf = cross_validate.KFold(n=y.size, n_folds=k, shuffle=True)
     fold = 0
     for train_idx, test_idx in kf:
         r2s, fold = evaluate_fold_ols(X, y, train_idx, test_idx, r2s, fold)
@@ -297,7 +297,7 @@ def run_cv(X, y, k, k_inner, points, alpha_low, alpha_high, randomize=False):
     r2s = np.zeros((k,))
     mses = np.zeros((k,))
     y_hat = np.zeros_like(y)
-    kf = cross_validation.KFold(n=y.size, n_folds=k, shuffle=True)
+    kf = cross_validate.KFold(n=y.size, n_folds=k, shuffle=True)
     fold = 0
     for train_idx, test_idx in kf:
         r2s, mses, y_hat, fold = evaluate_fold(
@@ -340,7 +340,7 @@ def find_best_alpha(X, y, k_inner, alphas):
     """
     Finds the best alpha in an inner CV loop.
     """
-    kf = cross_validation.KFold(n=y.size, n_folds=k_inner, shuffle=True)
+    kf = cross_validate.KFold(n=y.size, n_folds=k_inner, shuffle=True)
     best_alpha = 0
     best_r2 = 0
     for idx, alpha in enumerate(alphas):
