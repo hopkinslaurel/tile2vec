@@ -98,9 +98,7 @@ augment = True
 batch_size = 50
 shuffle = True
 num_workers = 4
-test_imgs = 1000
-
-# Training Parameters
+test_imgs =   3# Training Parameters
 in_channels = bands
 TileNet = make_tilenet(in_channels=in_channels, z_dim=args.z_dim)
 if cuda: TileNet.cuda()
@@ -119,7 +117,7 @@ if args.extract_small:
                  + str(i) + '.tif' for i in range(test_imgs)]
     #print(*img_names)
     X = get_small_features(img_names, TileNet, args.z_dim, cuda, bands,
-                           patch_size=50, patch_per_img=10, save=True,
+                           patch_size=67, patch_per_img=1, centered=True, save=True,
                            verbose=True, npy=False, quantile=args.quantile)
     print(X.shape)
     
