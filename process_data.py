@@ -13,8 +13,8 @@ import os
 import paths
 import matplotlib.pyplot as plt  # LH
 
-width = 145
-height = 145
+width = 145  # patch size, from which triplet tiles will be taken
+height = 145 #145*(30m/pixel) should be ~4.4km x 4.4km images 
 image_num = 0
 for filename in sorted(os.listdir(paths.tif_dir)):
     if filename.endswith('.tif'):
@@ -24,13 +24,16 @@ for filename in sorted(os.listdir(paths.tif_dir)):
         del obj # close GDAL dataset
         img = np.moveaxis(img, 0, -1)
         print(img.shape[0], img.shape[1])
+        #for i in range(0, 3):  # LH
         for i in range(0, img.shape[0] // width):
-            for j in range(0, img.shape[1] // height):
+            #for j in range(0, 3): # LH
+            for j in range(0, img.shape[1] // height): 
                 start_r = i*width
                 end_r = (i+1)*width
                 start_c = j*height
                 end_c = (j+1)*height
-                #plt.imsave(paths.fig_dir_test + str(image_num) + '.jpg', img[start_r:end_r,start_c:end_c,:])
+                #plt.imsave('naip_tile' + str(image_num) + '.jpg', img[start_r:end_r,start_c:end_c,:])
+                                
                 save_as = paths.np_dir + "/" + str(image_num)+".npy"
                 np.save(save_as, img[start_r:end_r,start_c:end_c,:])
                 

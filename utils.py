@@ -23,7 +23,7 @@ def load_landsat_npy(img_fn, bands, bands_only=False):
     img = np.load(img_fn)
     #plt.imsave(paths.fig_dir_test_land + "test.jpg", img)
     if bands_only: 
-        print("bands only")
+        #print("bands only")
         img = img[:,:,:bands]
         plt.imsave(paths.fig_dir_test_land + "test_bands.jpg", img)
     return img

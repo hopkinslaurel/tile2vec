@@ -158,14 +158,14 @@ if args.train:
     print("Generating Train Set")
     train_map(color_map)  
     tiles_train = get_triplets(paths.train_images, paths.train_tiles,
-                               args.ntrain, bands, tile_size = 50,
+                               args.ntrain, bands, tile_size = 67,  # tile_size = 67 == ~2km x 2km
                                neighborhood = args.nghbr,
                                npy = True, map_type="train")
 
 if args.val:
     print("Generating Val Set")
     tiles_val = get_triplets(paths.train_images, paths.val_tiles, args.nval,
-                               bands, tile_size = 50, neighborhood = args.nghbr,
+                               bands, tile_size = 67, neighborhood = args.nghbr,
                                npy = True, map_type="val")
 
     
@@ -173,21 +173,21 @@ if args.test:
     print("Generating Test Set")
     test_map(color_map)
     tiles_test = get_triplets(paths.test_images, paths.test_tiles, 
-                              args.ntest, bands, tile_size = 50,
+                              args.ntest, bands, tile_size = 67,
                               neighborhood = args.nghbr, npy = True,
                               map_type = "test")
 
 if args.lsms_train:
     print("Generating LSMS Train Set")
     tiles_lsms = get_triplets(paths.lsms_images_big, paths.lsms_train_tiles, 
-                              args.nlsms_train, bands, tile_size = 50,
+                              args.nlsms_train, bands, tile_size = 67,
                               neighborhood = args.nghbr, npy= False,
                               map_type = "lsms")
 
 if args.lsms_val:
     print("Generating LSMS Val Set")
     tiles_lsms = get_triplets(paths.lsms_images_big, paths.lsms_val_tiles, 
-                              args.nlsms_val, bands, tile_size = 50,
+                              args.nlsms_val, bands, tile_size = 67,
                               neighborhood = args.nghbr, npy= False,
                               map_type = "lsms")
 
@@ -202,4 +202,3 @@ ax.axis('off')
 plt.savefig("color_map_" + now.isoformat() + ".png")
 with open("color_map_" + now.isoformat() + ".p","wb") as f:
     pickle.dump(color_map,f)
-                

@@ -84,11 +84,11 @@ if not args.save_models:
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
 cuda = torch.cuda.is_available()
+print("Cuda available")
 if args.debug:
     torch.manual_seed(1)
     if cuda:
         # Not tested if this works/see pytorch thread it may not
-        print("Cuda available")
         torch.cuda.manual_seed_all(1)
         torch.backends.cudnn.deterministic = True
 
@@ -173,7 +173,7 @@ lr = 1e-3
 optimizer = optim.Adam(TileNet.parameters(), lr=lr, betas=(0.5, 0.999))
 margin = 50
 l2 = 0.01
-print_every = 10000
+print_every = 1000
 
 # Directory to save model params
 if not os.path.exists(paths.model_dir): os.makedirs(paths.model_dir)
@@ -248,18 +248,17 @@ for epoch in range(args.epochs_start, args.epochs_end):
         lsms_loss_val.append(avg_loss_lsms_val)
         writer.add_scalar('loss/lsms_val',avg_loss_lsms_val, epoch)
         
-    if args.extract_small:
-        epoch_idx = epoch - args.epochs_start
+    if args.extract_small & (epoch==args.epochs_end-1):
         # Small Image Features
-        print("Generating LSMS Small Features")
+        print("Extracting Small Features")
         img_names = [paths.lsms_images_small + 'naip_oregon_2011_cluster_' \
                      + str(i) + '.tif' for i in range(test_imgs)]
-        print("predict small: ")
-        print(*img_names)
+        #print("predict small: ")
+        #print(*img_names)
         X = get_small_features(img_names, TileNet, args.z_dim, cuda, bands,
-                               patch_size=50, patch_per_img=10, save=True,
+                               patch_size=67, patch_per_img=1, save=True,  #patch_per_img = 10
                                verbose=False, npy=False, quantile=args.quantile)
-        print(X)
+        #print(X)
         np.save(paths.ebird_features + 'cluster_conv_features_' + args.exp_name +\
                 '.npy', X)
 
@@ -270,7 +269,7 @@ for epoch in range(args.epochs_start, args.epochs_end):
         img_names = [paths.lsms_images_small + 'naip_oregon_2011_cluster_' \
                      + str(i) + '.tif' for i in range(test_imgs)]
         print("predict small: ")
-        print(*img_names)
+        
         X = get_small_features(img_names, TileNet, args.z_dim, cuda, bands,
                                patch_size=50, patch_per_img=10, save=True,
                                verbose=False, npy=False, quantile=args.quantile)
@@ -334,7 +333,7 @@ for epoch in range(args.epochs_start, args.epochs_end):
         writer.add_scalar('r2',mean_r2, epoch)
         writer.add_scalar('mse',mean_mse, epoch)
 
-    if args.save_models:
+    if args.save_models & (epoch%10 == 0):
         print("Saving")
         save_name = 'TileNet' + str(epoch) + '.ckpt'
         model_path = os.path.join(save_dir, save_name)
