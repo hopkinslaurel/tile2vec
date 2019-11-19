@@ -6,7 +6,7 @@ from time import time
 from src.data_utils import clip_and_scale_image
 import torch
 from torch.autograd import Variable
-
+import math
 import paths
 import matplotlib.pyplot as plt
 
@@ -86,8 +86,13 @@ def compute_quantile(output):
     return qvec
             
 def get_small_features (img_names, model, z_dim, cuda, bands=7, patch_size=50,
-                        patch_per_img=10, save=True, verbose=False, npy=True,
+                        patch_per_img=10, centered=False, save=True, verbose=False, npy=True,
                         quantile=False):
+    """
+    If centered is True, all patches extracted from the img will be replicates of the same tile
+    centered in the img. I.e. patch_per_img should be 1. 
+    """
+
     model.eval()
     X = np.zeros((len(img_names), z_dim))
     if quantile:
@@ -101,7 +106,12 @@ def get_small_features (img_names, model, z_dim, cuda, bands=7, patch_size=50,
         img_shape = img.shape
         output = np.zeros((patch_per_img,z_dim))
         for i in range(patch_per_img):
-            xa, ya = sample_patch(img_shape, patch_radius)
+            if centered:
+                # calculate center pixel coords of tif 
+                w_padded, h_padded, c = img_shape
+                xa, ya = math.floor(w_padded/2), math.floor(h_padded/2)
+            else:
+                xa, ya = sample_patch(img_shape, patch_radius)
             patch = extract_patch(img, xa, ya, patch_radius)
             output[i] = process_patch_features (model, patch, cuda)
         if quantile:
