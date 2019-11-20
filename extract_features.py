@@ -9,6 +9,7 @@ sys.path.append('../')
 sys.path.append(tile2vec_dir)
 
 import os
+import glob
 import torch
 from torch import optim
 from time import time
@@ -22,6 +23,7 @@ import paths
 from tensorboardX import SummaryWriter
 import argparse
 import pickle
+import csv
 
 # Parse command line arguments
 parser = argparse.ArgumentParser()
@@ -98,7 +100,8 @@ augment = True
 batch_size = 50
 shuffle = True
 num_workers = 4
-test_imgs =   3# Training Parameters
+
+# Training Parameters
 in_channels = bands
 TileNet = make_tilenet(in_channels=in_channels, z_dim=args.z_dim)
 if cuda: TileNet.cuda()
@@ -111,19 +114,27 @@ if args.model_fn:
 
 
 if args.extract_small:
-    # Small Image Features
+    # extract features
     print("Extracting Features")
-    img_names = [paths.lsms_images_small + 'naip_oregon_2011_cluster_' \
-                 + str(i) + '.tif' for i in range(test_imgs)]
-    #print(*img_names)
+
+    img_names = glob.glob(paths.ebird_tifs + "*.tif")
+    #img_names = [paths.ebird_tifs + 'naip_oregon_2011_cluster_' \
+    #             + str(i) + '.tif' for i in range(test_imgs)]
     X = get_small_features(img_names, TileNet, args.z_dim, cuda, bands,
                            patch_size=67, patch_per_img=1, centered=True, save=True,
                            verbose=True, npy=False, quantile=args.quantile)
-    print(X.shape)
-    
+       
+    # save extracted features
     np.save(paths.ebird_features + 'cluster_conv_features_' + args.exp_name +\
             '.npy', X)
     np.savetxt(paths.ebird_features + 'cluster_conv_features_' + args.exp_name +\
             '.csv', X, delimiter=",")    
 
+    # save filenames to link features to images
+    names = [os.path.split(img_name)[1].split(".")[0].split("_")[-1] for img_name in img_names]
+    names = zip(names) 
+    with open(paths.ebird_features + 'cluster_conv_names_' + args.exp_name + '.csv', 'w') as csvFile:
+        writer = csv.writer(csvFile)
+        writer.writerows(names)
+        
     print('Finished')
