@@ -183,7 +183,7 @@ if not os.path.exists(paths.model_dir + args.exp_name):
 
 # Regression variables
 lsms = True
-test_imgs = 1
+test_imgs = 3
 patches_per_img = 10
 country = 'uganda'
 country_path = paths.lsms_data
@@ -256,7 +256,7 @@ for epoch in range(args.epochs_start, args.epochs_end):
         #print("predict small: ")
         #print(*img_names)
         X = get_small_features(img_names, TileNet, args.z_dim, cuda, bands,
-                               patch_size=67, patch_per_img=1, save=True,  #patch_per_img = 10
+                patch_size=67, patch_per_img=1, centered=True, save=True,  #patch_per_img = 10
                                verbose=False, npy=False, quantile=args.quantile)
         #print(X)
         np.save(paths.ebird_features + 'cluster_conv_features_' + args.exp_name +\
@@ -271,7 +271,7 @@ for epoch in range(args.epochs_start, args.epochs_end):
         print("predict small: ")
         
         X = get_small_features(img_names, TileNet, args.z_dim, cuda, bands,
-                               patch_size=50, patch_per_img=10, save=True,
+                patch_size=50, patch_per_img=10, centered=False, save=True,
                                verbose=False, npy=False, quantile=args.quantile)
         np.save(paths.lsms_data + 'cluster_conv_features_' + args.exp_name +\
                 '.npy', X)

@@ -52,7 +52,7 @@ def train_model(model, cuda, dataloader, optimizer, epoch, margin=1,
     n_train, n_batches = len(dataloader.dataset), len(dataloader)
     print_sum_loss = 0
     for idx, triplets in enumerate(dataloader):
-        #print_progress(idx+1, n_batches)
+        print_progress(idx+1, n_batches)
         p, n, d = prep_triplets(triplets, cuda)
         optimizer.zero_grad()
         loss, l_n, l_d, l_nd = model.loss(p, n, d, margin=margin, l2=l2)
