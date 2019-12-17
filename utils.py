@@ -85,7 +85,7 @@ def compute_quantile(output):
     qvec[0][i:] = np.expand_dims(np.average(output, axis=0),0)
     return qvec
             
-def get_small_features (img_names, model, z_dim, cuda, bands=7, patch_size=50,
+def get_small_features (img_names, model, z_dim, cuda, bands=3, patch_size=50,
                         patch_per_img=10, centered=False, save=True, verbose=False, npy=True,
                         quantile=False):
     """
@@ -113,7 +113,7 @@ def get_small_features (img_names, model, z_dim, cuda, bands=7, patch_size=50,
             else:
                 xa, ya = sample_patch(img_shape, patch_radius)
             patch = extract_patch(img, xa, ya, patch_radius)
-            plt.imsave('ebird_patch' + str(k) + ".jpg", patch)
+            #plt.imsave('ebird_patch' + str(k) + ".jpg", patch)
             output[i] = process_patch_features (model, patch, cuda)
         if quantile:
             output = compute_quantile(output)
@@ -153,6 +153,86 @@ def get_big_features (img_names, model, z_dim, cuda, bands=5, patch_size=50,
             output = np.expand_dims(np.average(output, axis=0),0)
         X[k] = output
     return X
+
+
+def get_features_mean_stdDev (img_names, bands=7, patch_size=50,
+                        patch_per_img=10, centered=False, save=True, verbose=False, npy=True):
+    """
+    If centered is True, all patches extracted from the img will be replicates of the same tile
+    centered in the img. I.e. patch_per_img should be 1.
+    """
+    print("Mean and Std. Dev.")
+    X = np.zeros((len(img_names), 2*bands))  # mean and std. dev. for each band 
+    for k in range(len(img_names)):
+        img_name = img_names[k]
+        if verbose:
+            print("Getting features for: " + img_name)
+        patch_radius = patch_size // 2
+        img = load_landsat(img_name, bands, bands_only=True, is_npy=npy)
+        img_shape = img.shape
+        output = np.zeros((patch_per_img,2*bands))  # mean and std. dev for each band
+        for i in range(patch_per_img):
+            if centered:
+                # calculate center pixel coords of tif
+                w_padded, h_padded, c = img_shape
+                xa, ya = math.floor(w_padded/2), math.floor(h_padded/2)
+            else:
+                xa, ya = sample_patch(img_shape, patch_radius)
+            patch = extract_patch(img, xa, ya, patch_radius)
+            #plt.imsave('ebird_patch_mean_SD_' + str(k) + ".jpg", patch)
+        
+            # calculate mean and std. dev. 
+            patch = np.moveaxis(patch, -1, 0)   # (67, 67, 3) --> (3, 67, 67), patch[k] = (67, 67)
+            for n in range(bands):
+                #print(patch[n].shape)
+                output[i][n] = np.average(patch[n])   # for 6 bands: [ave0, ave1, ave2, sd0, sd1, sd2]
+                output[i][bands+n] = np.std(patch[n])
+                #print(output)
+            output = np.expand_dims(np.average(output, axis=0),0)
+        X[k] = output
+    return X
+
+
+def get_features_colorHist (img_names, bands=7, patch_size=50, patch_per_img=10, bins_per_band=13 
+                        centered=False, save=True, verbose=False, npy=True):
+    """
+    If centered is True, all patches extracted from the img will be replicates of the same tile
+    centered in the img. I.e. patch_per_img should be 1.
+    """
+    print("Color Histogram")
+    X = np.zeros((len(img_names), bins_per_band*bands))  # mean and std. dev. for each band
+    for k in range(len(img_names)):
+        img_name = img_names[k]
+        if verbose:
+            print("Getting features for: " + img_name)
+        patch_radius = patch_size // 2
+        img = load_landsat(img_name, bands, bands_only=True, is_npy=npy)
+        img_shape = img.shape
+        output = np.zeros((patch_per_img,bins_per_band*bands))  # mean and std. dev for each band
+        for i in range(patch_per_img):
+            if centered:
+                # calculate center pixel coords of tif
+                w_padded, h_padded, c = img_shape
+                xa, ya = math.floor(w_padded/2), math.floor(h_padded/2)
+            else:
+                xa, ya = sample_patch(img_shape, patch_radius)
+            patch = extract_patch(img, xa, ya, patch_radius)
+            #plt.imsave('ebird_patch_mean_SD_' + str(k) + ".jpg", patch)
+
+            # calculate mean and std. dev.
+            patch = np.moveaxis(patch, -1, 0)   # (67, 67, 3) --> (3, 67, 67), patch[k] = (67, 67)
+            for n in range(bands):
+                #print(patch[n].shape)
+                
+                # CALCULATE COLOR HIST
+
+                output[i][n] = np.average(patch[n])   # for 6 bands: [ave0, ave1, ave2, sd0, sd1, sd2]
+                output[i][bands+n] = np.std(patch[n])
+                #print(output)
+            output = np.expand_dims(np.average(output, axis=0),0)
+        X[k] = output
+    return X
+
 
 # old, didn't work as well
 def get_emax_features (img_names, model, z_dim, cuda, bands=5, patch_size=50,

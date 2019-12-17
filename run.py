@@ -66,6 +66,8 @@ parser.add_argument('-debug', action='store_true')
 
 # Feature extraction
 parser.add_argument('-extract_small', action='store_true')
+parser.add_argument('-extract_mean_stdDev', action='store_true')
+parser.add_argument('-extract_colorHist', action='store_true')
 
 args = parser.parse_args()
 print(args)
@@ -213,9 +215,9 @@ with open(save_dir + 'command.p','wb') as f:
     pickle.dump(args, f)
 
 # Train
-print('Begin Training')
 for epoch in range(args.epochs_start, args.epochs_end):
     if args.train:
+        print('Begin Training')
         avg_loss_train = train_model(TileNet, cuda, train_dataloader, optimizer,
                                      epoch+1, margin=margin, l2=l2,
                                      print_every=print_every, t0=t0)
@@ -250,7 +252,7 @@ for epoch in range(args.epochs_start, args.epochs_end):
         lsms_loss_val.append(avg_loss_lsms_val)
         writer.add_scalar('loss/lsms_val',avg_loss_lsms_val, epoch)
         
-    if args.extract_small & (epoch==args.epochs_end-1):
+    if args.extract_small:  # & (epoch==args.epochs_end-1):
         # Small Image Features
         print("\n\nExtracting Small Features")
         
@@ -259,7 +261,7 @@ for epoch in range(args.epochs_start, args.epochs_end):
 
         X = get_small_features(img_names, TileNet, args.z_dim, cuda, bands,
                 patch_size=67, patch_per_img=1, centered=True, save=True,  #patch_per_img = 10
-                               verbose=False, npy=False, quantile=args.quantile)
+                               verbose=True, npy=False, quantile=args.quantile)
         
         # save extracted features
         np.save(paths.ebird_features + 'cluster_conv_features_' + args.exp_name +\
@@ -274,6 +276,53 @@ for epoch in range(args.epochs_start, args.epochs_end):
         with open(paths.ebird_features + 'cluster_conv_names_' + args.exp_name + '.csv', 'w') as csvFile:
             writer = csv.writer(csvFile)
             writer.writerows(names)
+
+
+    if args.extract_mean_stdDev:
+        # Small Image Features
+        print("\n\nExtracting Mean & Std. Dev. Features")
+
+        img_names = glob.glob(paths.ebird_tifs + "*.tif")
+
+
+        X = get_features_mean_stdDev (img_names, bands, patch_size=67, patch_per_img=1,       # patch size 67 ~2km x 2km 
+                centered=True, save=True, verbose=True, npy=False)
+
+        # save extracted features
+        np.save(paths.ebird_features + 'mean_stdDev_features_' + args.exp_name + '.npy', X)
+
+        np.savetxt(paths.ebird_features + 'mean_stdDev_features_' + args.exp_name + '.csv', X, delimiter=",")
+
+        # save filenames to link features to images
+        names = [os.path.split(img_name)[1].split(".")[0].split("_")[-1] for img_name in img_names]
+        names = zip(names)
+        with open(paths.ebird_features + 'mean_stdDev_names_' + args.exp_name + '.csv', 'w') as csvFile:
+            writer = csv.writer(csvFile)
+            writer.writerows(names)
+
+
+    if args.extract_colorHist:
+        # Small Image Features
+        print("\n\nExtracting Color Histogram Features")
+
+        img_names = glob.glob(paths.ebird_tifs + "*.tif")
+
+
+        X = get_features_colorHist (img_names, bands, patch_size=67, patch_per_img=1,       # patch size 67 ~2km x 2km
+                bins_per_band=13, centered=True, save=True, verbose=True, npy=False)
+
+        # save extracted features
+        np.save(paths.ebird_features + 'colorHist_features_' + args.exp_name + '.npy', X)
+
+        np.savetxt(paths.ebird_features + 'colorHist_features_' + args.exp_name + '.csv', X, delimiter=",")
+
+        # save filenames to link features to images
+        names = [os.path.split(img_name)[1].split(".")[0].split("_")[-1] for img_name in img_names]
+        names = zip(names)
+        with open(paths.ebird_features + 'colorHist_names_' + args.exp_name + '.csv', 'w') as csvFile:
+            writer = csv.writer(csvFile)
+            writer.writerows(names)
+
 
 
     if args.predict_small:
@@ -370,9 +419,4 @@ for epoch in range(args.epochs_start, args.epochs_end):
             with open(save_dir + '/mse_' + str(epoch) + '.p', 'wb') as f:
                 pickle.dump(mse_list, f)
         
-print("Finished.")
-
-    
-
-
-    
+print("Finished.") 
