@@ -25,7 +25,7 @@ def load_landsat_npy(img_fn, bands, bands_only=False):
     if bands_only: 
         #print("bands only")
         img = img[:,:,:bands]
-        plt.imsave(paths.fig_dir_test_land + "test_bands.jpg", img)
+        #plt.imsave(paths.fig_dir_test_land + "test_bands.jpg", img)
     return img
 
 def load_landsat(img_fn, bands, bands_only=False, is_npy=True):
@@ -41,16 +41,28 @@ def load_landsat(img_fn, bands, bands_only=False, is_npy=True):
     del obj # close GDAL dataset
     img = np.moveaxis(img, 0, -1)
     if bands_only: img = img[:,:,:bands]
-    plt.imsave(paths.fig_dir_test_land + "cluster_test.jpg", img)
+    #plt.imsave(paths.fig_dir_test_land + "cluster_test.jpg", img)
     return img
 
-def extract_patch(img_padded, x0, y0, patch_radius):
+def load_nlcd(img_fn, bands=1, bands_only=False):
+    print("load_nlcd()")
+    obj = gdal.Open(img_fn)
+    img = obj.ReadAsArray().astype(np.uint8)
+    del obj # close GDAL dataset
+    #img = np.moveaxis(img, 0, -1)
+
+    return img
+
+def extract_patch(img_padded, x0, y0, patch_radius, bands):
     """
     Extracts a patch from a (padded) image given the row and column of
     the center pixel and the patch size. E.g., if the patch
     size is 15 pixels per side, then the patch radius should be 7.
     """
-    w_padded, h_padded, c = img_padded.shape
+    if (bands == 1):
+        w_padded, h_padded = img_padded.shape
+    else:
+        w_padded, h_padded, c = img_padded.shape
     row_min = x0 - patch_radius
     row_max = x0 + patch_radius
     col_min = y0 - patch_radius
@@ -59,7 +71,10 @@ def extract_patch(img_padded, x0, y0, patch_radius):
     assert row_max <= w_padded, 'Row max: {}'.format(row_max)
     assert col_min >= 0, 'Col min: {}'.format(col_min)
     assert col_max <= h_padded, 'Col max: {}'.format(col_max)
-    patch = img_padded[row_min:row_max+1, col_min:col_max+1, :]
+    if (bands == 1):
+        patch = img_padded[row_min:row_max+1, col_min:col_max+1]
+    else:
+        patch = img_padded[row_min:row_max+1, col_min:col_max+1, :]
     return patch
 
 def process_patch_features (model, patch, cuda):
@@ -112,7 +127,7 @@ def get_small_features (img_names, model, z_dim, cuda, bands=3, patch_size=50,
                 xa, ya = math.floor(w_padded/2), math.floor(h_padded/2)
             else:
                 xa, ya = sample_patch(img_shape, patch_radius)
-            patch = extract_patch(img, xa, ya, patch_radius)
+            patch = extract_patch(img, xa, ya, patch_radius, bands)
             #plt.imsave('ebird_patch' + str(k) + ".jpg", patch)
             output[i] = process_patch_features (model, patch, cuda)
         if quantile:
@@ -178,7 +193,7 @@ def get_features_mean_stdDev (img_names, bands=7, patch_size=50,
                 xa, ya = math.floor(w_padded/2), math.floor(h_padded/2)
             else:
                 xa, ya = sample_patch(img_shape, patch_radius)
-            patch = extract_patch(img, xa, ya, patch_radius)
+            patch = extract_patch(img, xa, ya, patch_radius, bands)
             #plt.imsave('ebird_patch_mean_SD_' + str(k) + ".jpg", patch)
         
             # calculate mean and std. dev. 
@@ -193,8 +208,8 @@ def get_features_mean_stdDev (img_names, bands=7, patch_size=50,
     return X
 
 
-def get_features_colorHist (img_names, bands=7, patch_size=50, patch_per_img=10, bins_per_band=13 
-                        centered=False, save=True, verbose=False, npy=True):
+def get_features_colorHist (img_names, bands=7, patch_size=50, patch_per_img=10, bins_per_band=13,
+                centered=False, save=True, verbose=False, npy=True):
     """
     If centered is True, all patches extracted from the img will be replicates of the same tile
     centered in the img. I.e. patch_per_img should be 1.
@@ -216,7 +231,7 @@ def get_features_colorHist (img_names, bands=7, patch_size=50, patch_per_img=10,
                 xa, ya = math.floor(w_padded/2), math.floor(h_padded/2)
             else:
                 xa, ya = sample_patch(img_shape, patch_radius)
-            patch = extract_patch(img, xa, ya, patch_radius)
+            patch = extract_patch(img, xa, ya, patch_radius, bands)
             #plt.imsave('ebird_patch_mean_SD_' + str(k) + ".jpg", patch)
 
             # calculate mean and std. dev.
@@ -234,6 +249,38 @@ def get_features_colorHist (img_names, bands=7, patch_size=50, patch_per_img=10,
     return X
 
 
+def clip_img (img_names, bands=1, patch_size=50, patch_per_img=10, centered=False, save=True, verbose=False, npy=True):
+    """
+    If centered is True, all patches extracted from the img will be replicates of the same tile
+    centered in the img. I.e. patch_per_img should be 1.
+    """
+    print("Clipping images")
+    for k in range(len(img_names)):
+        img_name = img_names[k]
+        if verbose:
+            print("Getting features for: " + img_name)
+        patch_radius = patch_size // 2
+        if (bands == 1):
+            img = load_nlcd(img_name, bands, bands_only=False)
+        else:
+            img = load_landsat(img_name, bands, bands_only=False)
+        img_shape = img.shape
+        for i in range(patch_per_img):
+            if centered:
+                # calculate center pixel coords of tif
+                if (bands == 1):
+                    w_padded, h_padded = img_shape
+                else:
+                    print(img_shape)
+                    w_padded, h_padded, c = img_shape
+                xa, ya = math.floor(w_padded/2), math.floor(h_padded/2)
+                print(xa, ya)
+            else:
+                xa, ya = sample_patch(img_shape, patch_radius)
+            patch = extract_patch(img, xa, ya, patch_radius, bands)
+            plt.imsave('clipped_' + img_name, patch)
+
+    
 # old, didn't work as well
 def get_emax_features (img_names, model, z_dim, cuda, bands=5, patch_size=50,
                       patch_per_img=36, save=True, verbose=False, npy=True):

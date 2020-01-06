@@ -69,6 +69,10 @@ parser.add_argument('-extract_small', action='store_true')
 parser.add_argument('-extract_mean_stdDev', action='store_true')
 parser.add_argument('-extract_colorHist', action='store_true')
 
+# Clip image to specific extents
+parser.add_argument('-clip_extent', action='store_true')
+parser.add_argument('--extent', dest="extent", type=int, default=67)  # 67 ~ 2km x 2km 
+
 args = parser.parse_args()
 print(args)
 
@@ -323,6 +327,28 @@ for epoch in range(args.epochs_start, args.epochs_end):
             writer = csv.writer(csvFile)
             writer.writerows(names)
 
+    if args.clip_extent:
+        # Small Image Features
+        print("\n\nClipping image to " + str(args.extent) + "patch size")
+
+        img_names = glob.glob(paths.ebird_tifs + "*.tif")
+
+        # Clip and save images
+        clip_img (img_names, bands, patch_size=args.extent, patch_per_img=1,       # patch size 67 ~2km x 2km
+                centered=True, save=True, verbose=True, npy=False)  
+        """
+        # save extracted features
+        np.save(paths.ebird_features + 'colorHist_features_' + args.exp_name + '.npy', X)
+
+        np.savetxt(paths.ebird_features + 'colorHist_features_' + args.exp_name + '.csv', X, delimiter=",")
+
+        # save filenames to link features to images
+        names = [os.path.split(img_name)[1].split(".")[0].split("_")[-1] for img_name in img_names]
+        names = zip(names)
+        with open(paths.ebird_features + 'colorHist_names_' + args.exp_name + '.csv', 'w') as csvFile:
+            writer = csv.writer(csvFile)
+            writer.writerows(names)
+        """
 
 
     if args.predict_small:
