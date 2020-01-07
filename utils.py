@@ -263,7 +263,7 @@ def clip_img (img_names, bands=1, patch_size=50, patch_per_img=10, centered=Fals
         if (bands == 1):
             img = load_nlcd(img_name, bands, bands_only=False)
         else:
-            img = load_landsat(img_name, bands, bands_only=False)
+            img = load_landsat(img_name, bands, bands_only=False, is_npy=False)
         img_shape = img.shape
         for i in range(patch_per_img):
             if centered:
@@ -278,7 +278,11 @@ def clip_img (img_names, bands=1, patch_size=50, patch_per_img=10, centered=Fals
             else:
                 xa, ya = sample_patch(img_shape, patch_radius)
             patch = extract_patch(img, xa, ya, patch_radius, bands)
-            plt.imsave('clipped_' + img_name, patch)
+            if (bands == 1):
+                plt.imsave('clipped_' + img_name, patch)
+            else:
+                name = img_name.split(".")[0]
+                plt.imsave(name + '_clipped.png', patch)
 
     
 # old, didn't work as well
