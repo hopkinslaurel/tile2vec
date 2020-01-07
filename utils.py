@@ -45,7 +45,7 @@ def load_landsat(img_fn, bands, bands_only=False, is_npy=True):
     return img
 
 def load_nlcd(img_fn, bands=1, bands_only=False):
-    print("load_nlcd()")
+    #print("load_nlcd()")
     obj = gdal.Open(img_fn)
     img = obj.ReadAsArray().astype(np.uint8)
     del obj # close GDAL dataset
@@ -258,7 +258,7 @@ def clip_img (img_names, bands=1, patch_size=50, patch_per_img=10, centered=Fals
     for k in range(len(img_names)):
         img_name = img_names[k]
         if verbose:
-            print("Getting features for: " + img_name)
+            print(img_name)
         patch_radius = patch_size // 2
         if (bands == 1):
             img = load_nlcd(img_name, bands, bands_only=False)
@@ -271,18 +271,16 @@ def clip_img (img_names, bands=1, patch_size=50, patch_per_img=10, centered=Fals
                 if (bands == 1):
                     w_padded, h_padded = img_shape
                 else:
-                    print(img_shape)
+                    #print(img_shape)
                     w_padded, h_padded, c = img_shape
                 xa, ya = math.floor(w_padded/2), math.floor(h_padded/2)
-                print(xa, ya)
+                #print(xa, ya)
             else:
                 xa, ya = sample_patch(img_shape, patch_radius)
             patch = extract_patch(img, xa, ya, patch_radius, bands)
-            if (bands == 1):
-                plt.imsave('clipped_' + img_name, patch)
-            else:
-                name = img_name.split(".")[0]
-                plt.imsave(name + '_clipped.png', patch)
+            #plt.imsave('clipped_' + img_name, patch)
+            name = img_name.split(".")[0]
+            plt.imsave(name + '_clipped.tiff', patch)
 
     
 # old, didn't work as well
