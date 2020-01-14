@@ -92,7 +92,7 @@ if not args.save_models:
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
 cuda = torch.cuda.is_available()
-print("Cuda available")
+print("Cuda available " + str(cuda))
 if args.debug:
     torch.manual_seed(1)
     if cuda:
@@ -107,9 +107,9 @@ writer = SummaryWriter(paths.log_dir + args.exp_name)
 img_type = 'rgb'
 bands = 3
 augment = True
-batch_size = 50
+batch_size = 9
 shuffle = True
-num_workers = 4
+num_workers = 3
 
 if args.train:
     train_dataloader = triplet_dataloader(img_type, paths.train_tiles,

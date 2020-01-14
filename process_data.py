@@ -13,8 +13,8 @@ import os
 import paths
 import matplotlib.pyplot as plt  # LH
 
-width = 145  # patch size, from which triplet tiles will be taken
-height = 145 #145*(30m/pixel) should be ~4.4km x 4.4km images 
+width = 550 #145  # patch size, from which triplet tiles will be taken
+height = 550 #145 #500*(10m/pixel) 5.5km patches, for 200 x 200 pixel (200*10m/pixel) 2km tiles 
 image_num = 0
 for filename in sorted(os.listdir(paths.tif_dir)):
     if filename.endswith('.tif'):

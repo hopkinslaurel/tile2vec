@@ -32,15 +32,16 @@ parser.add_argument('--nlsms_val', dest='nlsms_val', type=int, default=10000)
 parser.add_argument('--nghbr', dest='nghbr', type=int, default=50)
 parser.add_argument('-debug',  action='store_true')
 parser.add_argument('-color_map',  action='store_true')
+parser.add_argument('--bands', dest='bands', type=int, default=3)
 args = parser.parse_args()
 print(args)
 
 # Assumes 8x8 grid of clusters (of 16x16 .npy files, row major order)
 def get_coord (filename):
     number = int(filename[0:len(filename) - len('.npy')])
-    cluster = number // (16*16)
-    cluster_row = cluster // 8
-    cluster_col = cluster % 8
+    cluster = number // (16*167)
+    cluster_row = cluster // 20  #8
+    cluster_col = cluster % 20  #8
     image_idx = number % (16*16)
     image_row = image_idx // 16
     image_col = image_idx % 16
@@ -100,9 +101,9 @@ def get_triplets (data_dir, tile_dir, num_triplets, bands=7, tile_size=50,
         xn, yn = sample_neighbor(img_shape, xa, ya, neighborhood, tile_radius)
         img_shape = far_img.shape
         xd, yd = sample_tile(img_shape, tile_radius)
-        tile_anchor = extract_patch(near_img, xa, ya, tile_radius)
-        tile_neighbor = extract_patch(near_img, xn, yn, tile_radius)
-        tile_distant = extract_patch(far_img, xd, yd, tile_radius)
+        tile_anchor = extract_patch(near_img, xa, ya, tile_radius, args.bands)
+        tile_neighbor = extract_patch(near_img, xn, yn, tile_radius, args.bands)
+        tile_distant = extract_patch(far_img, xd, yd, tile_radius, args.bands)
         if size_even:
             tile_anchor = tile_anchor[:-1,:-1]
             tile_neighbor = tile_neighbor[:-1,:-1]
@@ -156,38 +157,38 @@ bands = 3
 
 if args.train:
     print("Generating Train Set")
-    train_map(color_map)  
+    #train_map(color_map)  
     tiles_train = get_triplets(paths.train_images, paths.train_tiles,
-                               args.ntrain, bands, tile_size = 67,  # tile_size = 67 == ~2km x 2km
+                               args.ntrain, bands, tile_size = 200,  # tile_size = 200(*10m/pixel) = 2km
                                neighborhood = args.nghbr,
                                npy = True, map_type="train")
 
 if args.val:
     print("Generating Val Set")
     tiles_val = get_triplets(paths.train_images, paths.val_tiles, args.nval,
-                               bands, tile_size = 67, neighborhood = args.nghbr,
+                               bands, tile_size = 200, neighborhood = args.nghbr,
                                npy = True, map_type="val")
 
     
 if args.test:
     print("Generating Test Set")
-    test_map(color_map)
+    #test_map(color_map)
     tiles_test = get_triplets(paths.test_images, paths.test_tiles, 
-                              args.ntest, bands, tile_size = 67,
+                              args.ntest, bands, tile_size = 200,
                               neighborhood = args.nghbr, npy = True,
                               map_type = "test")
 
 if args.lsms_train:
     print("Generating LSMS Train Set")
     tiles_lsms = get_triplets(paths.lsms_images_big, paths.lsms_train_tiles, 
-                              args.nlsms_train, bands, tile_size = 67,
+                              args.nlsms_train, bands, tile_size = 200,
                               neighborhood = args.nghbr, npy= False,
                               map_type = "lsms")
 
 if args.lsms_val:
     print("Generating LSMS Val Set")
     tiles_lsms = get_triplets(paths.lsms_images_big, paths.lsms_val_tiles, 
-                              args.nlsms_val, bands, tile_size = 67,
+                              args.nlsms_val, bands, tile_size = 200,
                               neighborhood = args.nghbr, npy= False,
                               map_type = "lsms")
 
