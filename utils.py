@@ -197,7 +197,7 @@ def get_features_mean_stdDev (img_names, bands=7, patch_size=50,
             #plt.imsave('ebird_patch_mean_SD_' + str(k) + ".jpg", patch)
         
             # calculate mean and std. dev. 
-            patch = np.moveaxis(patch, -1, 0)   # (67, 67, 3) --> (3, 67, 67), patch[k] = (67, 67)
+            patch = np.moveaxis(patch, -1, 0)   # (200, 200, 3) --> (3, 200, 200), patch[k] = (200, 200)
             for n in range(bands):
                 #print(patch[n].shape)
                 output[i][n] = np.average(patch[n])   # for 6 bands: [ave0, ave1, ave2, sd0, sd1, sd2]
@@ -208,7 +208,7 @@ def get_features_mean_stdDev (img_names, bands=7, patch_size=50,
     return X
 
 
-def get_features_colorHist (img_names, bands=7, patch_size=50, patch_per_img=10, bins_per_band=13,
+def get_features_colorHist (img_names, bands=3, patch_size=50, patch_per_img=10, bins_per_band=13,
                 centered=False, save=True, verbose=False, npy=True):
     """
     If centered is True, all patches extracted from the img will be replicates of the same tile
@@ -223,7 +223,7 @@ def get_features_colorHist (img_names, bands=7, patch_size=50, patch_per_img=10,
         patch_radius = patch_size // 2
         img = load_landsat(img_name, bands, bands_only=True, is_npy=npy)
         img_shape = img.shape
-        output = np.zeros((patch_per_img,bins_per_band*bands))  # mean and std. dev for each band
+        output = np.zeros((patch_per_img,bands,bins_per_band))  # hist. for each band
         for i in range(patch_per_img):
             if centered:
                 # calculate center pixel coords of tif
@@ -235,16 +235,25 @@ def get_features_colorHist (img_names, bands=7, patch_size=50, patch_per_img=10,
             #plt.imsave('ebird_patch_mean_SD_' + str(k) + ".jpg", patch)
 
             # calculate mean and std. dev.
-            patch = np.moveaxis(patch, -1, 0)   # (67, 67, 3) --> (3, 67, 67), patch[k] = (67, 67)
+            patch = np.moveaxis(patch, -1, 0)   # (200, 200, 3) --> (3, 200, 200), patch[k] = (200, 200)
             for n in range(bands):
                 #print(patch[n].shape)
                 
-                # CALCULATE COLOR HIST
+                x = patch[n].flatten()
+                # calculate histogram on 1d numpy array
+                #print("Bins: " + str(bins_per_band))
+                hist, bins = np.histogram(x,bins=bins_per_band,range=[0,255]) # 13 bins/channel --> 39 bins/image #TEST ME! 
 
-                output[i][n] = np.average(patch[n])   # for 6 bands: [ave0, ave1, ave2, sd0, sd1, sd2]
-                output[i][bands+n] = np.std(patch[n])
+                #hist, bins = np.histogram(img.ravel(),256,[0,256])
+                #print("Hist")
+                #print(hist)
+                #print("Bins")
+                #print(bins)
+
+                output[i][n] = hist  # for 6 bands: [ave0, ave1, ave2, sd0, sd1, sd2]
                 #print(output)
-            output = np.expand_dims(np.average(output, axis=0),0)
+            #output = np.expand_dims(np.average(output, axis=0),0) #TODO: test for averaging across multiple patches
+            output = output.flatten()
         X[k] = output
     return X
 
