@@ -22,9 +22,8 @@ def load_landsat_npy(img_fn, bands, bands_only=False):
     #print("load_landsat_npy()")
     img = np.load(img_fn)
     #plt.imsave(paths.fig_dir_test_land + "test.jpg", img)
-    if bands_only: 
-        #print("bands only")
-        img = img[:,:,:bands]
+    if bands_only and bands > 1:  # if bands == 1, shape will be [:,:]
+            img = img[:,:,:bands]
         #plt.imsave(paths.fig_dir_test_land + "test_bands.jpg", img)
     return img
 
@@ -40,7 +39,8 @@ def load_landsat(img_fn, bands, bands_only=False, is_npy=True):
     img = obj.ReadAsArray().astype(np.uint8)
     del obj # close GDAL dataset
     img = np.moveaxis(img, 0, -1)
-    if bands_only: img = img[:,:,:bands]
+    if bands_only and bands > 1:  # if bands == 1, shape will be [:,:] 
+        img = img[:,:,:bands]
     #plt.imsave(paths.fig_dir_test_land + "cluster_test.jpg", img)
     return img
 
