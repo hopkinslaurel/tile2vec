@@ -105,14 +105,14 @@ def get_triplets (data_dir, tile_dir, data_dir_nlcd, tile_dir_nlcd, num_triplets
         if smart:
             near_img_nlcd = load_landsat(data_dir_nlcd + near_img_idx, 1, bands_only=True, is_npy=npy)
             far_img_nlcd = load_landsat(data_dir_nlcd + far_img_idx, 1, bands_only=True, is_npy=npy)
-            print("Near and far nlcd")
-            print(near_img_nlcd.shape)
-            print(far_img_nlcd.shape)
+            #print("Near and far nlcd")
+            #print(near_img_nlcd.shape)
+            #print(far_img_nlcd.shape)
         near_img_shape = near_img.shape
         far_img_shape = far_img.shape
-        print("Near and far naip")
-        print(near_img_shape)
-        print(far_img_shape)
+        #print("Near and far naip")
+        #print(near_img_shape)
+        #print(far_img_shape)
         xa, ya = sample_tile(near_img_shape, tile_radius) # get single anchor
         tile_anchor = extract_patch(near_img, xa, ya, tile_radius, bands)
         if size_even:
@@ -127,7 +127,7 @@ def get_triplets (data_dir, tile_dir, data_dir_nlcd, tile_dir_nlcd, num_triplets
             np.save(os.path.join(tile_dir_nlcd, '{}_anchor_nlcd.npy'.format(i)), tile_anchor_nlcd) # need to save to tile_dir_nlcd
             num_triplet_options = nsample 
         plt.imsave(os.path.join(tile_dir, '{}_anchor.jpg'.format(i)), tile_anchor)
-        plt.imsave(os.path.join(tile_dir_nlcd, '{}_anchor_nlcd.jpg'.format(i))), tile_anchor_nlcd)
+        plt.imsave(os.path.join(tile_dir_nlcd, '{}_anchor_nlcd.jpg'.format(i)), tile_anchor_nlcd)
         xn, yn = np.zeros(num_triplet_options, dtype=int), np.zeros(num_triplet_options, dtype=int)
         xd, yd = np.zeros(num_triplet_options, dtype=int), np.zeros(num_triplet_options, dtype=int)
         for j in range(0, num_triplet_options):

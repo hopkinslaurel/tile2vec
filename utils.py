@@ -290,7 +290,7 @@ def clip_img (img_names, bands=1, patch_size=50, patch_per_img=10, centered=Fals
             #plt.imsave('clipped_' + img_name, patch)
             name = img_name.split(".")[0]
             plt.imsave(name + '_clipped.tiff', patch)
-
+           
     
 # old, didn't work as well
 def get_emax_features (img_names, model, z_dim, cuda, bands=5, patch_size=50,

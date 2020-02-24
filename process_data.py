@@ -41,7 +41,7 @@ for filename in sorted(os.listdir(tif_path)):
         img = obj.ReadAsArray().astype(np.uint8)
         del obj # close GDAL dataset
         if args.data == 'naip':
-            img = np.moveaxis(img, 0, -1)
+            img = np.moveaxis(img, 0, -1)  # (3, x_dim, y_dim) -> (x_dim,y_dim, 3)
         print(img.shape[0], img.shape[1])
         #for i in range(0, 3):  # LH
         for i in range(0, img.shape[0] // width):

@@ -71,7 +71,7 @@ parser.add_argument('-extract_colorHist', action='store_true')
 
 # Clip image to specific extents
 parser.add_argument('-clip_extent', action='store_true')
-parser.add_argument('--extent', dest="extent", type=int, default=67)  # 67 ~ 2km x 2km 
+parser.add_argument('--extent', dest="extent", type=int, default=200)  # 200 = 2km x 2km 
 
 args = parser.parse_args()
 print(args)
@@ -107,9 +107,9 @@ writer = SummaryWriter(paths.log_dir + args.exp_name)
 img_type = 'rgb'
 bands = 3
 augment = True
-batch_size = 9
+batch_size = 24
 shuffle = True
-num_workers = 3
+num_workers = 1
 
 if args.train:
     train_dataloader = triplet_dataloader(img_type, paths.train_tiles,
@@ -174,6 +174,7 @@ if cuda: TileNet.cuda()
 # Load saved model
 if args.model_fn:
     TileNet.load_state_dict(torch.load(args.model_fn))
+    print("Loaded saved model")
 
 print('TileNet set up complete.')
 
@@ -354,7 +355,7 @@ for epoch in range(args.epochs_start, args.epochs_end):
         writer.add_scalar('r2',mean_r2, epoch)
         writer.add_scalar('mse',mean_mse, epoch)
 
-    if args.save_models & (epoch%10 == 0):
+    if args.save_models & (epoch%5 == 0):
         print("Saving")
         save_name = 'TileNet' + str(epoch) + '.ckpt'
         model_path = os.path.join(save_dir, save_name)
@@ -382,24 +383,26 @@ if args.extract_small:
     # Small Image Features
     print("\n\nExtracting Small Features")
 
-    img_names = glob.glob(paths.ebird_tifs + "*.tif")
+    img_names = glob.glob(paths.tifs_to_extract + "*.npy")
+    if len(img_names) == 0:
+        print("Empty path")
 
 
     X = get_small_features(img_names, TileNet, args.z_dim, cuda, bands,
-            patch_size=67, patch_per_img=1, centered=True, save=True,  #patch_per_img = 10
-                           verbose=True, npy=False, quantile=args.quantile)
+            patch_size=args.extent, patch_per_img=1, centered=True, save=True,  #patch_per_img = 10
+                           verbose=True, npy=True, quantile=args.quantile)
 
     # save extracted features
-    np.save(paths.ebird_features + 'cluster_conv_features_' + args.exp_name +\
-            '.npy', X)
+    np.save(paths.home_dir + 'cluster_conv_features_' + args.exp_name +\
+            '_' + str(args.extent) + '_patch' + '.npy', X)
 
-    np.savetxt(paths.ebird_features + 'cluster_conv_features_' + args.exp_name +\
-        '.csv', X, delimiter=",")
+    np.savetxt(paths.home_dir + 'cluster_conv_features_' + args.exp_name +\
+        '_' + str(args.extent) + '_patch' + '.csv', X, delimiter=",")
 
     # save filenames to link features to images
     names = [os.path.split(img_name)[1].split(".")[0].split("_")[-1] for img_name in img_names]
     names = zip(names)
-    with open(paths.ebird_features + 'cluster_conv_names_' + args.exp_name + '.csv', 'w') as csvFile:
+    with open(paths.home_dir + 'cluster_conv_names_' + args.exp_name + '_' + str(args.extent) + '_patch' +'.csv', 'w') as csvFile:
         writer = csv.writer(csvFile)
         writer.writerows(names)
 
@@ -408,21 +411,21 @@ if args.extract_mean_stdDev:
     # Small Image Features
     print("\n\nExtracting Mean & Std. Dev. Features")
 
-    img_names = glob.glob(paths.ebird_tifs + "*.tif")
+    img_names = glob.glob(paths.tifs_to_extract + "*.tif")
 
 
-    X = get_features_mean_stdDev (img_names, bands, patch_size=67, patch_per_img=1,       # patch size 67 ~2km x 2km
+    X = get_features_mean_stdDev (img_names, bands, patch_size=args.extent, patch_per_img=1,       # patch size 67 ~2km x 2km
             centered=True, save=True, verbose=True, npy=False)
 
     # save extracted features
-    np.save(paths.ebird_features + 'mean_stdDev_features_' + args.exp_name + '.npy', X)
+    np.save(paths.home_dir + 'mean_stdDev_features_' + args.exp_name + '_' + str(args.extent) + '_patch' + '.npy', X)
 
-    np.savetxt(paths.ebird_features + 'mean_stdDev_features_' + args.exp_name + '.csv', X, delimiter=",")
+    np.savetxt(paths.home_dir + 'mean_stdDev_features_' + args.exp_name + '_' + str(args.extent) + '_patch' + '.csv', X, delimiter=",")
 
     # save filenames to link features to images
     names = [os.path.split(img_name)[1].split(".")[0].split("_")[-1] for img_name in img_names]
     names = zip(names)
-    with open(paths.ebird_features + 'mean_stdDev_names_' + args.exp_name + '.csv', 'w') as csvFile:
+    with open(paths.home_dir + 'mean_stdDev_names_' + args.exp_name + '_' + str(args.extent) + '_patch' +  '.csv', 'w') as csvFile:
         writer = csv.writer(csvFile)
         writer.writerows(names)
 
@@ -431,21 +434,21 @@ if args.extract_colorHist:
     # Small Image Features
     print("\n\nExtracting Color Histogram Features")
 
-    img_names = glob.glob(paths.ebird_tifs + "*.tif")
+    img_names = glob.glob(paths.tifs_to_extract + "*.tif")
 
 
-    X = get_features_colorHist (img_names, bands, patch_size=67, patch_per_img=1,       # patch size 200 = 2km x 2km
+    X = get_features_colorHist (img_names, bands, patch_size=args.extent, patch_per_img=1,       # patch size 200 = 2km x 2km
             bins_per_band=13, centered=True, save=True, verbose=True, npy=False)
 
     # save extracted features
-    np.save(paths.ebird_features + 'colorHist_features_' + args.exp_name + '.npy', X)
+    np.save(paths.home_dir + 'colorHist_features_' + args.exp_name + '_' + str(args.extent) + '_patch' + '.npy', X)
 
-    np.savetxt(paths.ebird_features + 'colorHist_features_' + args.exp_name + '.csv', X, delimiter=",")
+    np.savetxt(paths.home_dir + 'colorHist_features_' + args.exp_name + '_' + str(args.extent) + '_patch' + '.csv', X, delimiter=",")
 
     # save filenames to link features to images
     names = [os.path.split(img_name)[1].split(".")[0].split("_")[-1] for img_name in img_names]
     names = zip(names)
-    with open(paths.ebird_features + 'colorHist_names_' + args.exp_name + '.csv', 'w') as csvFile:
+    with open(paths.home_dir + 'colorHist_names_' + args.exp_name + '_' + str(args.extent) + '_patch' + '.csv', 'w') as csvFile:
         writer = csv.writer(csvFile)
         writer.writerows(names)
 
@@ -454,11 +457,11 @@ if args.clip_extent:
     # Small Image Features
     print("\n\nClipping image to " + str(args.extent) + "patch size")
 
-    img_names = glob.glob(paths.ebird_tifs + "*.tif")
+    img_names = glob.glob(paths.tifs_to_extract + "*.tif")
 
     # Clip and save images
     clip_img (img_names, bands, patch_size=args.extent, patch_per_img=1,       # patch size 200 = 2km x 2km
             centered=True, save=True, verbose=True, npy=False)
 
 
-print("Finished.") 
+    print("Finished.")
