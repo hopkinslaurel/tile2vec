@@ -107,7 +107,7 @@ writer = SummaryWriter(paths.log_dir + args.exp_name)
 img_type = 'rgb'
 bands = 3
 augment = True
-batch_size = 96
+batch_size = 48
 shuffle = True
 num_workers = 1
 
@@ -170,7 +170,6 @@ if args.lsms_val:
 in_channels = bands
 TileNet = make_tilenet(in_channels=in_channels, z_dim=args.z_dim)
 if cuda: TileNet.cuda()
-
 # Load saved model
 if args.model_fn:
     TileNet.load_state_dict(torch.load(args.model_fn))
@@ -225,21 +224,22 @@ with open(save_dir + 'command.p','wb') as f:
 with open('train_loss_' + args.exp_name + '.csv', 'a') as csv_train,   \
         open('test_loss_' + args.exp_name + '.csv', 'a') as csv_test,  \
         open('val_loss_' + args.exp_name + '.csv', 'a') as csv_val,    \
-        open('avg_train_loss_' + args.exp_name + '.csv', 'a') as csv_train_avg,   \
-        open('avg_test_loss_' + args.exp_name + '.csv', 'a') as csv_test_avg,  \
-        open('avg_val_loss_' + args.exp_name + '.csv', 'a') as csv_val_avg:
+        open('indv_loss_' + args.exp_name + '.csv', 'a') as csv_indv:
+        #open('indv_train_l_d__' + args.exp_name + '.csv', 'a') as csv_train_d,  \
+        #open('indv_trian_l_nd_' + args.exp_name + '.csv', 'a') as csv_train_nd,  \
+        #open('indv_test_l_n_' + args.exp_name + '.csv', 'a') as csv_test_n,   \
+        #open('indv_test_l_d__' + args.exp_name + '.csv', 'a') as csv_test_d,  \
+        #open('indv_test_l_nd_' + args.exp_name + '.csv', 'a') as csv_test_nd:
     train_writer = csv.writer(csv_train)
     test_writer = csv.writer(csv_test)
     val_writer = csv.writer(csv_val)
-    train_writer_avg = csv.writer(csv_train_avg)
-    test_writer_avg = csv.writer(csv_test_avg)
-    val_writer_avg = csv.writer(csv_val_avg)
+    indv_writer = csv.writer(csv_indv) 
 
     for epoch in range(args.epochs_start, args.epochs_end):
         if args.train:
             print('Begin Training')
             avg_loss_train = train_model(TileNet, cuda, train_dataloader, optimizer,
-                                         epoch+1, train_writer, train_writer_avg, 
+                                         epoch+1, train_writer, indv_writer, 
                                          margin=margin, l2=l2,
                                          print_every=print_every, t0=t0)
             train_loss.append(avg_loss_train)
@@ -254,16 +254,14 @@ with open('train_loss_' + args.exp_name + '.csv', 'a') as csv_train,   \
 
         if args.test:
             avg_loss_test= validate_model(TileNet, cuda, test_dataloader, optimizer,
-                                          epoch+1, test_writer, test_writer_avg, 
-                                          margin=margin, l2=l2,
+                                          epoch+1, test_writer, margin=margin, l2=l2,
                                           print_every=print_every, t0=t0)
             test_loss.append(avg_loss_test)
             writer.add_scalar('loss/test',avg_loss_test, epoch)
 
         if args.val:
             avg_loss_val= validate_model(TileNet, cuda, val_dataloader, optimizer,
-                                          epoch+1, val_writer, val_writer_avg, 
-                                          margin=margin, l2=l2,
+                                          epoch+1, val_writer, margin=margin, l2=l2,
                                           print_every=print_every, t0=t0)
             val_loss.append(avg_loss_val)
             writer.add_scalar('loss/val',avg_loss_val, epoch)

@@ -82,6 +82,23 @@ class TileNet(nn.Module):
             loss += l2 * (torch.norm(z_p) + torch.norm(z_n) + torch.norm(z_d))
         return loss, l_n, l_d, l_nd
 
+
+    def triplet_loss_write(self, z_p, z_n, z_d, csv_writers, margin=0.1, l2=0):
+        l_n = torch.sqrt(((z_p - z_n) ** 2).sum(dim=1))
+        l_d = - torch.sqrt(((z_p - z_d) ** 2).sum(dim=1))
+        l_nd = l_n + l_d
+        loss = F.relu(l_n + l_d + margin)
+        csv_writers['n'].writerow(l_n)
+        csv_writers['d'].writerow(-1*l_d)
+        csv_writers['nd'].writerow(l_nd)
+        l_n = torch.mean(l_n)
+        l_d = torch.mean(l_d)
+        l_nd = torch.mean(l_n + l_d)
+        loss = torch.mean(loss)
+        if l2 != 0:
+            loss += l2 * (torch.norm(z_p) + torch.norm(z_n) + torch.norm(z_d))
+        return loss, l_n, l_d, l_nd
+
     def loss(self, patch, neighbor, distant, margin=0.1, l2=0):
         """
         Computes loss for each batch.
@@ -89,6 +106,15 @@ class TileNet(nn.Module):
         z_p, z_n, z_d = (self.encode(patch), self.encode(neighbor),
             self.encode(distant))
         return self.triplet_loss(z_p, z_n, z_d, margin=margin, l2=l2)
+
+
+    def loss_write(self, patch, neighbor, distant, csv_writers, margin=0.1, l2=0):
+        """
+        Computes loss for each batch.
+        """
+        z_p, z_n, z_d = (self.encode(patch), self.encode(neighbor),
+            self.encode(distant))
+        return self.triplet_loss_write(z_p, z_n, z_d, csv_writers, margin=margin, l2=l2)
 
 
 def make_tilenet(in_channels=5, z_dim=512):
