@@ -20,6 +20,7 @@ class ResidualBlock(nn.Module):
             padding=1, bias=False)
         self.bn2 = nn.BatchNorm2d(planes)
 
+
         self.shortcut = nn.Sequential()
         if stride != 1 or in_planes != planes:
             self.shortcut = nn.Sequential(
@@ -49,8 +50,8 @@ class TileNet(nn.Module):
         self.layer2 = self._make_layer(128, num_blocks[1], stride=2)
         self.layer3 = self._make_layer(256, num_blocks[2], stride=2)
         self.layer4 = self._make_layer(512, num_blocks[3], stride=2)
-        self.layer5 = self._make_layer(self.z_dim, num_blocks[4],
-            stride=2)
+        self.layer5 = self._make_layer(self.z_dim, num_blocks[4], stride=2)
+        self.layer6 = nn.Sequential(nn.Linear(self.z_dim, 1), nn.Sigmoid())  # add a weight layer 
 
     def _make_layer(self, planes, num_blocks, stride, no_relu=False):
         strides = [stride] + [1]*(num_blocks-1)
@@ -71,14 +72,32 @@ class TileNet(nn.Module):
         z = x.view(x.size(0), -1)
         return z
 
+    def encode_sdm(self, x):
+        x = F.relu(self.bn1(self.conv1(x)))
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+        x = self.layer5(x)
+        x = F.avg_pool2d(x, 4)
+        z = x.view(x.size(0), -1)  # torch.Size([n_batch, z_dim]), e.g. [48, 32] 
+        #print("In encode_smd -- z:")
+        #print(z.shape)
+        y = self.layer6(z)  # returns [n_batch,1], e.g. [48,1]
+        print("z after sigmoid():")
+        #print(z.shape)
+        #print(z)
+        return z, y
+
     def forward(self, x):
         return self.encode(x)
     
-    def triplet_loss(self, z_p, z_n, z_d, margin=0.1, l2=0):
+    def triplet_loss(self, y, z_p, z_n, z_d, p_sdm, margin=0.1, l2=0):
         l_n = torch.sqrt(((z_p - z_n) ** 2).sum(dim=1))
         l_d = - torch.sqrt(((z_p - z_d) ** 2).sum(dim=1))
         l_nd = l_n + l_d
-        loss = F.relu(l_n + l_d + margin)
+        l_sdm = y*p_sdm + (1-y)*(1-p_sdm)
+        loss = F.relu(l_n + l_d + margin + l_sdm)
         l_n = torch.mean(l_n)
         l_d = torch.mean(l_d)
         l_nd = torch.mean(l_n + l_d)
@@ -87,19 +106,22 @@ class TileNet(nn.Module):
             loss += l2 * (torch.norm(z_p) + torch.norm(z_n) + torch.norm(z_d))
         return loss, l_n, l_d, l_nd
 
-    def triplet_loss_write(self, z_p, z_n, z_d, csv_writer_indv, epoch, idx, margin=0.1, l2=0):
+    def triplet_loss_write(self, y, z_p, z_n, z_d, p_sdm, csv_writer_indv, epoch, idx, margin=0.1, l2=0):
         l_n = torch.sqrt(((z_p - z_n) ** 2).sum(dim=1))
         l_d = - torch.sqrt(((z_p - z_d) ** 2).sum(dim=1))
         l_nd = l_n + l_d
-        loss = F.relu(l_n + l_d + margin)
+        l_sdm = y*p_sdm + (1-y)*(1-p_sdm)
+        loss = F.relu(l_n + l_d + margin + l_sdm)
         # prep data to be written out
         n = [x.item() for x in l_n]
         d = [x.item() for x in l_d]
         nd = [x.item() for x in l_nd]
+        sdm = [x.item() for x in l_sdm]
         out = [epoch, idx]
         csv_writer_indv.writerow(out + ['l_n'] + n)
         csv_writer_indv.writerow(out + ['l_d'] + d)
         csv_writer_indv.writerow(out + ['l_nd'] + nd)
+        csv_writer_indv.writerow(out + ['l_sdm'] + sdm)
         l_n = torch.mean(l_n)
         l_d = torch.mean(l_d)
         l_nd = torch.mean(l_n + l_d)
@@ -108,24 +130,24 @@ class TileNet(nn.Module):
             loss += l2 * (torch.norm(z_p) + torch.norm(z_n) + torch.norm(z_d))
         return loss, l_n, l_d, l_nd
 
-    def loss(self, patch, neighbor, distant, margin=0.1, l2=0):
+    def loss(self, y, patch, neighbor, distant, margin=0.1, l2=0):
         """
         Computes loss for each batch.
         """
-        print("In tilenet loss")
-        z_p, z_n, z_d = (self.encode(patch), self.encode(neighbor),
+        z_p, p_sdm, z_n, z_d = (self.encode_sdm(patch), self.encode(neighbor),
             self.encode(distant))
-        return self.triplet_loss(z_p, z_n, z_d, margin=margin, l2=l2)
+        loss, l_n, l_d, l_nd = self.triplet_loss(y, z_p, z_n, z_d, p_sdm, margin=margin, l2=l2)
+        return loss, l_n, l_d, l_nd, p_sdm
 
 
-    def loss_write(self, patch, neighbor, distant, csv_writer_indv, epoch, idx, margin=0.1, l2=0):
+    def loss_write(self, y, patch, neighbor, distant, csv_writer_indv, epoch, idx, margin=0.1, l2=0):
         """
         Computes loss for each batch.
         """
-        print("In tilenet loss")
-        z_p, z_n, z_d = (self.encode(patch), self.encode(neighbor),
+        z_p, p_sdm, z_n, z_d = (self.encode_sdm(patch), self.encode(neighbor),
             self.encode(distant))
-        return self.triplet_loss_write(z_p, z_n, z_d, csv_writer_indv, epoch, idx, margin=margin, l2=l2)
+        loss, l_n, l_d, l_nd = self.triplet_loss_write(y, z_p, z_n, z_d, p_sdm, csv_writer_indv, epoch, idx, margin=margin, l2=l2)
+        return loss, l_n, l_d, l_nd, p_sdm
 
 
 def make_tilenet(in_channels=4, z_dim=512):
@@ -136,6 +158,7 @@ def make_tilenet(in_channels=4, z_dim=512):
     num_blocks = [2, 2, 2, 2, 2]
     return TileNet(num_blocks, in_channels=in_channels, z_dim=z_dim)
 
-#a = make_tilenet(5)
+#a = make_tilenet(3,32)
 #a.cuda()
+#print(a)
 #summary(a,(5,50,50))

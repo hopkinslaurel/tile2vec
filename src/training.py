@@ -51,16 +51,18 @@ def train_model(model, cuda, dataloader, optimizer, epoch, csv_writer, csv_write
         t0 = time.time()
     sum_loss, sum_l_n, sum_l_d, sum_l_nd = (0, 0, 0, 0)
     n_train, n_batches = len(dataloader.dataset), len(dataloader)
+    print("In train, n_train: " + str(n_train))
+    print("In train, n_batchs: " + str(n_batches))
     print_sum_loss = 0
     for idx, triplets in enumerate(dataloader):
-        print_progress(idx+1, n_batches)
+        #print_progress(idx+1, n_batches)
         p, n, d = prep_triplets(triplets, cuda)
         optimizer.zero_grad()
-        if idx+1 == 1 or idx+1 == 6250:  # 3125 = 300k images / 96 imgs/batch
-            print('Epoch: ' + str(epoch))
-            print('Idx: ' + str(idx))
-            loss, l_n, l_d, l_nd = model.loss_write(p, n, d, csv_writer_indv, epoch, idx+1, margin=margin, l2=l2) 
-        loss, l_n, l_d, l_nd = model.loss(p, n, d, margin=margin, l2=l2)
+        if idx+1 == 1 or idx+1 == n_batches:  # 3125 = 300k images / 96 imgs/batch
+            #print('Epoch: ' + str(epoch))
+            #print('Idx: ' + str(idx+1))
+            loss, l_n, l_d, l_nd = model.loss_write(y, p, n, d, csv_writer_indv, epoch, idx+1, margin=margin, l2=l2) 
+        loss, l_n, l_d, l_nd = model.loss(y, p, n, d, margin=margin, l2=l2)
         #print("loss: ")
         #print(loss, l_n, l_d, l_nd)
         #print(loss.item(), l_n.item(), l_d.item(), l_nd.item())
@@ -114,7 +116,7 @@ def validate_model(model, cuda, dataloader, optimizer, epoch, csv_writer,
                 csv_writer_indv.writerow([epoch, idx+1])
                 loss, l_n, l_d, l_nd = model.loss_write(p, n, d, csv_writers_indv, margin=margin, l2=l2)
             '''
-            loss, l_n, l_d, l_nd = model.loss(p, n, d, margin=margin, l2=l2)
+            loss, l_n, l_d, l_nd = model.loss(y, p, n, d, margin=margin, l2=l2)
             #print("loss: ")
             #print(loss, l_n, l_d, l_nd)
             #print(loss.item(), l_n.item(), l_d.item(), l_nd.item())

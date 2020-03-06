@@ -2,7 +2,9 @@
 # =============================================================================
 # Original code by Neal Jean/Sherrie Wang (see example 2 notebook in tile2vec
 # repo). Edits and extensions by Anshul Samar. 
-
+# =============================================================================
+# Edits made by Laurel Hopkins. 
+# =============================================================================
 import sys
 import paths 
 

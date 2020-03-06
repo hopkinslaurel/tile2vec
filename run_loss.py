@@ -1,8 +1,11 @@
-# run.py
+# run_loss.py
 # =============================================================================
 # Original code by Neal Jean/Sherrie Wang (see example 2 notebook in tile2vec
 # repo). Edits and extensions by Anshul Samar.
-
+# =============================================================================
+# Printing individual losses (averages per batch and per triplet). Edits made 
+# by Laurel Hopkins.
+# ============================================================================
 import sys
 import paths
 
@@ -78,7 +81,9 @@ print(args)
 
 
 # Load Model Definition
-if args.model == "minires":
+if args.model == "minires_sdm":
+    from src.tilenet_with_sdm import make_tilenet
+elif args.model == "minires":
     from src.minires import make_tilenet
 elif args.model == "miniminires":
     from src.miniminires import make_tilenet
@@ -272,33 +277,6 @@ with open('train_loss_' + args.exp_name + '.csv', 'a') as csv_train,   \
                                                l2=l2, print_every=print_every, t0=t0)
             lsms_loss_val.append(avg_loss_lsms_val)
             writer.add_scalar('loss/lsms_val',avg_loss_lsms_val, epoch)
-
-        ''' TODO: test if extract_small works outsie of training loop, if so, delete
-        if args.extract_small & (epoch==args.epochs_end-1):
-            # Small Image Features
-            print("\n\nExtracting Small Features")
-
-            img_names = glob.glob(paths.ebird_tifs + "*.tif")
-
-
-            X = get_small_features(img_names, TileNet, args.z_dim, cuda, bands,
-                    patch_size=67, patch_per_img=1, centered=True, save=True,  #patch_per_img = 10
-                                   verbose=True, npy=False, quantile=args.quantile)
-
-            # save extracted features
-            np.save(paths.ebird_features + 'cluster_conv_features_' + args.exp_name +\
-                    '.npy', X)
-
-            np.savetxt(paths.ebird_features + 'cluster_conv_features_' + args.exp_name +\
-                '.csv', X, delimiter=",")
-
-            # save filenames to link features to images
-            names = [os.path.split(img_name)[1].split(".")[0].split("_")[-1] for img_name in img_names]
-            names = zip(names)
-            with open(paths.ebird_features + 'cluster_conv_names_' + args.exp_name + '.csv', 'w') as csvFile:
-                writer = csv.writer(csvFile)
-                writer.writerows(names)
-        '''
 
         if args.predict_small:
             epoch_idx = epoch - args.epochs_start
