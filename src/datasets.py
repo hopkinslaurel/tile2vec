@@ -35,7 +35,7 @@ class TileTripletsDataset(Dataset):
         a = np.moveaxis(a, -1, 0)
         n = np.moveaxis(n, -1, 0)
         d = np.moveaxis(d, -1, 0)
-        sample = {'anchor': a, 'neighbor': n, 'distant': d}
+        sample = {'idx': idx, 'anchor': a, 'neighbor': n, 'distant': d}
         
         #plt.imsave(paths.fig_dir_test_land + '{}_loader_anchor.jpg'.format(idx), a)
         #plt.imsave(paths.fig_dir_test_land + '{}_loader_neighbor.jpg'.format(idx), n)
