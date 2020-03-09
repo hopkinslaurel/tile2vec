@@ -63,6 +63,7 @@ parser.add_argument('--epochs_end', dest="epochs_end", type=int, default=50)
 parser.add_argument('--epochs_start', dest="epochs_start", type=int, default=0)
 parser.add_argument('-save_models', action='store_true')
 parser.add_argument('--gpu', dest="gpu", type=int, default=0)
+parser.add_argument('--species', dest="species")
 
 # Debug
 parser.add_argument('-debug', action='store_true')
@@ -230,11 +231,6 @@ with open('train_loss_' + args.exp_name + '.csv', 'a') as csv_train,   \
         open('test_loss_' + args.exp_name + '.csv', 'a') as csv_test,  \
         open('val_loss_' + args.exp_name + '.csv', 'a') as csv_val,    \
         open('indv_loss_' + args.exp_name + '.csv', 'a') as csv_indv:
-        #open('indv_train_l_d__' + args.exp_name + '.csv', 'a') as csv_train_d,  \
-        #open('indv_trian_l_nd_' + args.exp_name + '.csv', 'a') as csv_train_nd,  \
-        #open('indv_test_l_n_' + args.exp_name + '.csv', 'a') as csv_test_n,   \
-        #open('indv_test_l_d__' + args.exp_name + '.csv', 'a') as csv_test_d,  \
-        #open('indv_test_l_nd_' + args.exp_name + '.csv', 'a') as csv_test_nd:
     train_writer = csv.writer(csv_train)
     test_writer = csv.writer(csv_test)
     val_writer = csv.writer(csv_val)
@@ -244,7 +240,7 @@ with open('train_loss_' + args.exp_name + '.csv', 'a') as csv_train,   \
         if args.train:
             print('Begin Training')
             avg_loss_train = train_model(TileNet, cuda, train_dataloader, optimizer,
-                                         epoch+1, train_writer, indv_writer, 
+                                         epoch+1, args.species, train_writer, indv_writer, 
                                          margin=margin, l2=l2,
                                          print_every=print_every, t0=t0)
             train_loss.append(avg_loss_train)
@@ -252,21 +248,21 @@ with open('train_loss_' + args.exp_name + '.csv', 'a') as csv_train,   \
 
         if args.lsms_train:
             avg_loss_lsms_train = train_model(TileNet, cuda, lsms_train_dataloader,
-                                              optimizer, epoch+1, None, margin=margin,
+                                              optimizer, epoch+1, args.species, None, margin=margin,
                                               l2=l2, print_every=print_every, t0=t0)
             lsms_loss_train.append(avg_loss_lsms_train)
             writer.add_scalar('loss/lsms_train',avg_loss_lsms_train, epoch)
 
         if args.test:
             avg_loss_test= validate_model(TileNet, cuda, test_dataloader, optimizer,
-                                          epoch+1, test_writer, margin=margin, l2=l2,
+                                          epoch+1, args.species, test_writer, margin=margin, l2=l2,
                                           print_every=print_every, t0=t0)
             test_loss.append(avg_loss_test)
             writer.add_scalar('loss/test',avg_loss_test, epoch)
 
         if args.val:
             avg_loss_val= validate_model(TileNet, cuda, val_dataloader, optimizer,
-                                          epoch+1, val_writer, margin=margin, l2=l2,
+                                          epoch+1, args.species, val_writer, margin=margin, l2=l2,
                                           print_every=print_every, t0=t0)
             val_loss.append(avg_loss_val)
             writer.add_scalar('loss/val',avg_loss_val, epoch)

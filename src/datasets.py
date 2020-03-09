@@ -35,7 +35,8 @@ class TileTripletsDataset(Dataset):
         a = np.moveaxis(a, -1, 0)
         n = np.moveaxis(n, -1, 0)
         d = np.moveaxis(d, -1, 0)
-        sample = {'idx': idx, 'anchor': a, 'neighbor': n, 'distant': d}
+        sample = {'anchor': a, 'neighbor': n, 'distant': d, 'idx': idx}
+       
         
         #plt.imsave(paths.fig_dir_test_land + '{}_loader_anchor.jpg'.format(idx), a)
         #plt.imsave(paths.fig_dir_test_land + '{}_loader_neighbor.jpg'.format(idx), n)
@@ -60,7 +61,7 @@ class GetBands(object):
         a, n, d = (sample['anchor'], sample['neighbor'], sample['distant'])
         # Tiles are already in [c, w, h] order
         a, n, d = (a[:self.bands,:,:], n[:self.bands,:,:], d[:self.bands,:,:])
-        sample = {'anchor': a, 'neighbor': n, 'distant': d}
+        sample = {'anchor': a, 'neighbor': n, 'distant': d, 'idx': sample['idx']}
         return sample
 
 class RandomFlipAndRotate(object):
@@ -86,7 +87,7 @@ class RandomFlipAndRotate(object):
         if rotations > 0: n = np.rot90(n, k=rotations, axes=(1,2)).copy()
         rotations = np.random.choice([0, 1, 2, 3])
         if rotations > 0: d = np.rot90(d, k=rotations, axes=(1,2)).copy()
-        sample = {'anchor': a, 'neighbor': n, 'distant': d}
+        sample = {'anchor': a, 'neighbor': n, 'distant': d, 'idx': sample['idx']}
         return sample
 
 class ClipAndScale(object):
@@ -102,7 +103,7 @@ class ClipAndScale(object):
         a, n, d = (clip_and_scale_image(sample['anchor'], self.img_type),
                    clip_and_scale_image(sample['neighbor'], self.img_type),
                    clip_and_scale_image(sample['distant'], self.img_type))
-        sample = {'anchor': a, 'neighbor': n, 'distant': d}
+        sample = {'anchor': a, 'neighbor': n, 'distant': d, 'idx': sample['idx']}
         return sample
 
 class ToFloatTensor(object):
@@ -113,7 +114,7 @@ class ToFloatTensor(object):
         a, n, d = (torch.from_numpy(sample['anchor']).float(),
             torch.from_numpy(sample['neighbor']).float(),
             torch.from_numpy(sample['distant']).float())
-        sample = {'anchor': a, 'neighbor': n, 'distant': d}
+        sample = {'anchor': a, 'neighbor': n, 'distant': d, 'idx': sample['idx']}
         return sample
 
 ### TRANSFORMS ###
