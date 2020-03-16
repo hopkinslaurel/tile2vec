@@ -20,7 +20,12 @@ train_images_nlcd = drive + "data/npy/train_nlcd/"
 test_images_nlcd = drive + "data/npy/test_nlcd/"
 #ebird_tifs = data_dir + "tif/ebird_naip/" # contains images centered at ebird records
 ebird_tifs = data_dir + "tif/synthetic_5k_naip_mini/"  # contains images centered at randomly sampled points
-lsms_images_big = data_dir + "tif/uganda_lsms_big/" # contains big images
+
+# for make_triplets_synthetic.py
+synthetic_tiles = drive + "data/npy/synthetic_5k_naip_20m_clipped/"
+synthetic_triplets_train = drive + "data/npy/synthetic_train/"
+synthetic_triplets_test = drive + "data/npy/synthetic_test/"
+synthetic_triplets_val = drive + "data/npy/syntheitic_val"
 
 # triplets for training/val
 train_tiles = drive + "data/tiles_20m/train/"
@@ -55,8 +60,9 @@ original_data = home_dir + "/lsms/original_lsms/"
 #ebird_features = drive + "data/ebird_features/"
 ebird_tifs = drive + "data/tif/synthetic_5k_naip_10m/"
 synthetic_naip = drive + "data/npy/synthetic_5k_naip_20m_clipped/"
+synthetic_naipTEST = drive + "data/npy/synthetic_5k_naip_20m_clippedTEST/"
 
-tifs_to_extract = synthetic_naip
+tifs_to_extract = synthetic_naipTEST
 
 #resizing
 to_resize = synthetic_naip
