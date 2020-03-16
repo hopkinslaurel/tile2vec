@@ -25,7 +25,7 @@ ebird_tifs = data_dir + "tif/synthetic_5k_naip_mini/"  # contains images centere
 synthetic_tiles = drive + "data/npy/synthetic_5k_naip_20m_clipped/"
 synthetic_triplets_train = drive + "data/npy/synthetic_train/"
 synthetic_triplets_test = drive + "data/npy/synthetic_test/"
-synthetic_triplets_val = drive + "data/npy/syntheitic_val"
+synthetic_triplets_val = drive + "data/npy/synthetic_val"
 
 # triplets for training/val
 train_tiles = drive + "data/tiles_20m/train/"
