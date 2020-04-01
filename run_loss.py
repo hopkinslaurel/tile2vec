@@ -21,7 +21,7 @@ from time import time
 import random
 import numpy as np
 from fig_utils import *
-from src.datasets import triplet_dataloader
+from src.datasets import triplet_dataloader, get_ids
 from src.training import train_model, validate_model, prep_triplets
 from utils import *
 import paths
@@ -36,15 +36,10 @@ parser = argparse.ArgumentParser()
 # Training
 parser.add_argument('-train', action='store_true')
 parser.add_argument('--ntrain', dest='ntrain', type=int, default=100000)
-parser.add_argument('-lsms_train',  action='store_true')
-parser.add_argument('--nlsms_train', dest='nlsms_train', type=int,
-                    default=100000)
 
 # Testing
 parser.add_argument('-test',  action='store_true')
 parser.add_argument('--ntest', dest='ntest', type=int, default=50000)
-parser.add_argument('-lsms_val',  action='store_true')
-parser.add_argument('--nlsms_val', dest='nlsms_val', type=int, default=50000)
 parser.add_argument('-val',  action='store_true')
 parser.add_argument('--nval', dest='nval', type=int, default=50000)
 
@@ -64,6 +59,7 @@ parser.add_argument('--epochs_start', dest="epochs_start", type=int, default=0)
 parser.add_argument('-save_models', action='store_true')
 parser.add_argument('--gpu', dest="gpu", type=int, default=0)
 parser.add_argument('--species', dest="species")
+parser.add_argument('-synthetic', action='store_true')
 
 # Debug
 parser.add_argument('-debug', action='store_true')
@@ -113,68 +109,60 @@ writer = SummaryWriter(paths.log_dir + args.exp_name)
 img_type = 'rgb'
 bands = 3
 augment = True
-batch_size = 48
+batch_size = 96
 shuffle = True
-num_workers = 1
+num_workers = 2
+list_IDs = None # only needed when working with synthetic data
+if args.synthetic:
+    print("Using synthetic dataloader")
 
 if args.train:
+    if args.synthetic:
+        list_IDs = get_ids('train')
     train_dataloader = triplet_dataloader(img_type, paths.train_tiles,
                                           bands=bands, augment=augment,
                                           batch_size=batch_size,
                                           shuffle=shuffle,
                                           num_workers=num_workers,
                                           n_triplets=args.ntrain,
-                                          pairs_only=True)
+                                          pairs_only=False, list_IDs=list_IDs)
 
     print('Train Dataloader set up complete.')
 
 if args.test:
+    if args.synthetic:    
+        list_IDs = get_ids('test')
     test_dataloader = triplet_dataloader(img_type, paths.test_tiles,
                                          bands=bands, augment=augment,
                                          batch_size=batch_size,
                                          shuffle=shuffle,
                                          num_workers=num_workers,
                                          n_triplets=args.ntest,
-                                         pairs_only=True)
+                                         pairs_only=False, list_IDs=list_IDs)
 
     print('Test Dataloader set up complete.')
 
 if args.val:
+    if args.synthetic:
+        list_IDs = get_ids('val')
     val_dataloader = triplet_dataloader(img_type, paths.val_tiles,
                                          bands=bands, augment=augment,
                                          batch_size=batch_size,
                                          shuffle=shuffle,
                                          num_workers=num_workers,
                                          n_triplets=args.nval,
-                                         pairs_only=True)
+                                         pairs_only=False, list_IDs=list_IDs)
 
     print('Val Dataloader set up complete.')
 
-if args.lsms_train:
-    lsms_train_dataloader = triplet_dataloader(img_type, paths.lsms_train_tiles,
-                                         bands=bands, augment=augment,
-                                         batch_size=batch_size,
-                                         shuffle=shuffle,
-                                         num_workers=num_workers,
-                                         n_triplets=args.nlsms_train,
-                                         pairs_only=True)
-
-    print('LSMS Dataloader set up complete.')
-
-if args.lsms_val:
-    lsms_val_dataloader = triplet_dataloader(img_type, paths.lsms_val_tiles,
-                                         bands=bands, augment=augment,
-                                         batch_size=batch_size,
-                                         shuffle=shuffle,
-                                         num_workers=num_workers,
-                                         n_triplets=args.nlsms_val,
-                                         pairs_only=True)
-
-    print('LSMS Val Dataloader set up complete.')
 
 # Training Parameters
 in_channels = bands
-TileNet = make_tilenet(in_channels=in_channels, z_dim=args.z_dim)
+if args.synthetic:
+    TileNet = make_tilenet_sdm(in_channels=in_channels, z_dim=args.z_dim)
+else:
+    TileNet = make_tilenet(in_channels=in_channels, z_dim=args.z_dim)
+
 if cuda: TileNet.cuda()
 # Load saved model
 if args.model_fn:
@@ -183,11 +171,11 @@ if args.model_fn:
 
 print('TileNet set up complete.')
 
-lr = 1e-3
+lr = 1e-6
 optimizer = optim.Adam(TileNet.parameters(), lr=lr, betas=(0.5, 0.999))
 margin = 50
 l2 = 0.01
-print_every = 1000
+print_every = 100
 
 # Directory to save model params
 if not os.path.exists(paths.model_dir): os.makedirs(paths.model_dir)
@@ -238,20 +226,12 @@ with open('train_loss_' + args.exp_name + '.csv', 'a') as csv_train,   \
 
     for epoch in range(args.epochs_start, args.epochs_end):
         if args.train:
-            print('Begin Training')
             avg_loss_train = train_model(TileNet, cuda, train_dataloader, optimizer,
                                          epoch+1, args.species, train_writer, indv_writer, 
                                          margin=margin, l2=l2,
                                          print_every=print_every, t0=t0)
             train_loss.append(avg_loss_train)
             writer.add_scalar('loss/train',avg_loss_train, epoch)
-
-        if args.lsms_train:
-            avg_loss_lsms_train = train_model(TileNet, cuda, lsms_train_dataloader,
-                                              optimizer, epoch+1, args.species, None, margin=margin,
-                                              l2=l2, print_every=print_every, t0=t0)
-            lsms_loss_train.append(avg_loss_lsms_train)
-            writer.add_scalar('loss/lsms_train',avg_loss_lsms_train, epoch)
 
         if args.test:
             avg_loss_test= validate_model(TileNet, cuda, test_dataloader, optimizer,
@@ -266,13 +246,6 @@ with open('train_loss_' + args.exp_name + '.csv', 'a') as csv_train,   \
                                           print_every=print_every, t0=t0)
             val_loss.append(avg_loss_val)
             writer.add_scalar('loss/val',avg_loss_val, epoch)
-
-        if args.lsms_val:
-            avg_loss_lsms_val = validate_model(TileNet, cuda, lsms_val_dataloader,
-                                               optimizer, epoch+1, None, margin=margin,
-                                               l2=l2, print_every=print_every, t0=t0)
-            lsms_loss_val.append(avg_loss_lsms_val)
-            writer.add_scalar('loss/lsms_val',avg_loss_lsms_val, epoch)
 
         if args.predict_small:
             epoch_idx = epoch - args.epochs_start
@@ -356,12 +329,6 @@ with open('train_loss_' + args.exp_name + '.csv', 'a') as csv_train,   \
             if args.test:
                 with open(save_dir + '/test_loss.p', 'wb') as f:
                     pickle.dump(test_loss, f)
-            if args.lsms_train:
-                with open(save_dir + '/lsms_loss_train.p', 'wb') as f:
-                    pickle.dump(lsms_loss_train, f)
-            if args.lsms_val:
-                with open(save_dir + '/lsms_loss_val.p', 'wb') as f:
-                    pickle.dump(lsms_loss_val, f)
             if args.predict_big or args.predict_small:
                 with open(save_dir + '/r2_' + str(epoch) + '.p', 'wb') as f:
                     pickle.dump(r2_list, f)
@@ -378,7 +345,7 @@ if args.extract_small:
 
     X = get_small_features(img_names, TileNet, args.z_dim, cuda, bands,
             patch_size=args.extent, patch_per_img=1, centered=True, save=True,  #patch_per_img = 10
-                           verbose=True, npy=False, quantile=args.quantile)
+                           verbose=True, npy=True, quantile=args.quantile)
 
     # save extracted features
     np.save(paths.home_dir + 'cluster_conv_features_' + args.exp_name +\
