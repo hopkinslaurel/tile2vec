@@ -78,7 +78,7 @@ print(args)
 
 
 # Load Model Definition
-if args.model == "minires_sdm":
+if args.model == "minires_sdm" or args.synthetic:
     from src.tilenet_with_sdm import make_tilenet
 elif args.model == "minires":
     from src.minires import make_tilenet
@@ -158,10 +158,8 @@ if args.val:
 
 # Training Parameters
 in_channels = bands
-if args.synthetic:
-    TileNet = make_tilenet_sdm(in_channels=in_channels, z_dim=args.z_dim)
-else:
-    TileNet = make_tilenet(in_channels=in_channels, z_dim=args.z_dim)
+TileNet = make_tilenet(in_channels=in_channels, z_dim=args.z_dim)
+print(TileNet)
 
 if cuda: TileNet.cuda()
 # Load saved model
