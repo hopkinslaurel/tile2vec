@@ -8,6 +8,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 from torchsummary import summary
+from math import log
 from species_labels import *
 
 class ResidualBlock(nn.Module):
@@ -82,22 +83,13 @@ class TileNet(nn.Module):
         #return self.encode(x)
         return self.encode_sdm(x)
     
-    def triplet_loss(self, z_p, z_n, z_d, y, p_sdm, csv_writer_indv, epoch, idx, margin=0.1, l2=0):
+    def triplet_loss(self, z_p, z_n, z_d, y, p_sdm, alpha, csv_writer_indv, epoch, idx, margin=0.1, l2=0):
         l_n = torch.sqrt(((z_p - z_n) ** 2).sum(dim=1))
         l_d = - torch.sqrt(((z_p - z_d) ** 2).sum(dim=1))
         l_nd = l_n + l_d
         y = torch.Tensor(y).cuda()
-        #print("y")
-        #print(y.type)
-        #print(y)
-        #print("p_sdm")
-        #print(p_sdm.type)
-        #print(p_sdm)
-        l_sdm = y*p_sdm + (1-y)*(1-p_sdm)
-        #print("l_sdm")
-        #print(l_sdm.type)
-        #print(l_sdm)
-        loss = F.relu(l_n + l_d + margin + l_sdm)
+        l_sdm = -y*log(p_sdm) - (1-y)*log(1-p_sdm)
+        loss = F.relu(l_n + l_d + margin + alpha*l_sdm)
         # prep data to be written out
         if csv_writer_indv is not None:
             n = [x.item() for x in l_n]
