@@ -43,7 +43,7 @@ def prep_triplets(triplets, cuda):
     	a, n, d = (a.cuda(), n.cuda(), d.cuda())
     return (a, n, d, idx)
 
-def train_model(model, cuda, dataloader, optimizer, epoch, species, csv_writer, csv_writer_indv, 
+def train_model(model, cuda, dataloader, optimizer, epoch, species, alpha, csv_writer, csv_writer_indv, 
     margin=1, l2=0, print_every=100, t0=None):
     """
     Trains a model for one epoch using the provided dataloader.
@@ -62,7 +62,7 @@ def train_model(model, cuda, dataloader, optimizer, epoch, species, csv_writer, 
         writer = None
         if idx+1 == 1 or idx+1 == n_batches:  # 3125 = 300k images / 96 imgs/batch
             writer = csv_writer_indv
-        loss, l_n, l_d, l_nd = model.loss(p, n, d, triplet_idx, species, csv_writer_indv, epoch, idx+1, margin=margin, l2=l2) 
+        loss, l_n, l_d, l_nd = model.loss(p, n, d, triplet_idx, species, alpha, csv_writer_indv, epoch, idx+1, margin=margin, l2=l2) 
         #print("loss: ")
         #print(loss, l_n, l_d, l_nd)
         #print(loss.item(), l_n.item(), l_d.item(), l_nd.item())

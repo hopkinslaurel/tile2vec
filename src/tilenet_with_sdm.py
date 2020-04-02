@@ -113,7 +113,7 @@ class TileNet(nn.Module):
             loss += l2 * (torch.norm(z_p) + torch.norm(z_n) + torch.norm(z_d))
         return loss, l_n, l_d, l_nd
 
-    def loss(self, patch, neighbor, distant, triplet_idx, species, csv_writer_indv, epoch, idx, margin=0.1, l2=0):
+    def loss(self, patch, neighbor, distant, triplet_idx, species, alpha, csv_writer_indv, epoch, idx, margin=0.1, l2=0):
         """
         Computes loss for each batch.
         """
@@ -122,7 +122,7 @@ class TileNet(nn.Module):
         z_n, z_d = (self.encode(neighbor), self.encode(distant))
         y = get_records(triplet_idx, species)
         #print(y)
-        loss, l_n, l_d, l_nd = self.triplet_loss(z_p, z_n, z_d, y, p_sdm, csv_writer_indv, epoch, idx, margin=margin, l2=l2)
+        loss, l_n, l_d, l_nd = self.triplet_loss(z_p, z_n, z_d, y, p_sdm, alpha, csv_writer_indv, epoch, idx, margin=margin, l2=l2)
         return loss, l_n, l_d, l_nd
 
 

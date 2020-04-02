@@ -50,16 +50,17 @@ parser.add_argument('-quantile', action='store_true')
 parser.add_argument('--trials', dest="trials", type=int, default=10)
 
 # Model
-parser.add_argument('--model', dest="model", default="tilenet")
-parser.add_argument('--z_dim', dest="z_dim", type=int, default=512)
+parser.add_argument('--model', dest='model', default='tilenet')
+parser.add_argument('--z_dim', dest='z_dim', type=int, default=512)
 parser.add_argument('--model_fn', dest='model_fn')
 parser.add_argument('--exp_name', dest='exp_name')
-parser.add_argument('--epochs_end', dest="epochs_end", type=int, default=50)
+parser.add_argument('--epochs_end', dest='epochs_end', type=int, default=50)
 parser.add_argument('--epochs_start', dest="epochs_start", type=int, default=0)
 parser.add_argument('-save_models', action='store_true')
-parser.add_argument('--gpu', dest="gpu", type=int, default=0)
+parser.add_argument('--gpu', dest='gpu', type=int, default=0)
 parser.add_argument('--species', dest="species")
 parser.add_argument('-synthetic', action='store_true')
+parser.add_argument('--alpha', dest='alpha', type=int, default=10)
 
 # Debug
 parser.add_argument('-debug', action='store_true')
@@ -110,7 +111,7 @@ img_type = 'rgb'
 bands = 3
 augment = True
 batch_size = 96
-shuffle = True
+shuffle = False
 num_workers = 2
 list_IDs = None # only needed when working with synthetic data
 if args.synthetic:
@@ -225,7 +226,7 @@ with open('train_loss_' + args.exp_name + '.csv', 'a') as csv_train,   \
     for epoch in range(args.epochs_start, args.epochs_end):
         if args.train:
             avg_loss_train = train_model(TileNet, cuda, train_dataloader, optimizer,
-                                         epoch+1, args.species, train_writer, indv_writer, 
+                                         epoch+1, args.species, args.alpha, train_writer, indv_writer, 
                                          margin=margin, l2=l2,
                                          print_every=print_every, t0=t0)
             train_loss.append(avg_loss_train)
@@ -233,14 +234,14 @@ with open('train_loss_' + args.exp_name + '.csv', 'a') as csv_train,   \
 
         if args.test:
             avg_loss_test= validate_model(TileNet, cuda, test_dataloader, optimizer,
-                                          epoch+1, args.species, test_writer, margin=margin, l2=l2,
+                                          epoch+1, args.species, args.alpha, test_writer, margin=margin, l2=l2,
                                           print_every=print_every, t0=t0)
             test_loss.append(avg_loss_test)
             writer.add_scalar('loss/test',avg_loss_test, epoch)
 
         if args.val:
             avg_loss_val= validate_model(TileNet, cuda, val_dataloader, optimizer,
-                                          epoch+1, args.species, val_writer, margin=margin, l2=l2,
+                                          epoch+1, args.species, args.alpha, val_writer, margin=margin, l2=l2,
                                           print_every=print_every, t0=t0)
             val_loss.append(avg_loss_val)
             writer.add_scalar('loss/val',avg_loss_val, epoch)
@@ -338,8 +339,7 @@ if args.extract_small:
     # Small Image Features
     print("\n\nExtracting Small Features")
 
-    img_names = glob.glob(paths.tifs_to_extract + "*.tif")
-
+    img_names = glob.glob(paths.tifs_to_extract + "*.npy")
 
     X = get_small_features(img_names, TileNet, args.z_dim, cuda, bands,
             patch_size=args.extent, patch_per_img=1, centered=True, save=True,  #patch_per_img = 10
