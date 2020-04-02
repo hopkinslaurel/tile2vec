@@ -88,7 +88,7 @@ class TileNet(nn.Module):
         l_d = - torch.sqrt(((z_p - z_d) ** 2).sum(dim=1))
         l_nd = l_n + l_d
         y = torch.Tensor(y).cuda()
-        l_sdm = -y*log(p_sdm) - (1-y)*log(1-p_sdm)
+        l_sdm = -y*torch.log(p_sdm) - (1-y)*torch.log(1-p_sdm)
         loss = F.relu(l_n + l_d + margin + alpha*l_sdm)
         # prep data to be written out
         if csv_writer_indv is not None:
