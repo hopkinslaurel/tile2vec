@@ -61,6 +61,8 @@ parser.add_argument('--gpu', dest='gpu', type=int, default=0)
 parser.add_argument('--species', dest="species")
 parser.add_argument('-synthetic', action='store_true')
 parser.add_argument('--alpha', dest='alpha', type=int, default=10)
+parser.add_argument('--lr', dest='lr', type=int, default=1e-6)
+#parser.add_argument('-print_loss', action='store_true')
 
 # Debug
 parser.add_argument('-debug', action='store_true')
@@ -170,7 +172,7 @@ if args.model_fn:
 
 print('TileNet set up complete.')
 
-lr = 1e-6
+lr = args.lr
 optimizer = optim.Adam(TileNet.parameters(), lr=lr, betas=(0.5, 0.999))
 margin = 50
 l2 = 0.01
