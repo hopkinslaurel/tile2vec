@@ -34,12 +34,14 @@ class ResidualBlock(nn.Module):
         out = F.relu(self.bn1(self.conv1(x)))
         out = self.bn2(self.conv2(out))
         out += self.shortcut(x)
+        #out = F.dropout(out, p=0.5)
         out = F.relu(out)
+        out = F.dropout(out, p=0.5)
         return out
 
 
 class TileNet(nn.Module):
-    def __init__(self, num_blocks, in_channels=4, z_dim=512):
+    def __init__(self, num_blocks, in_channels=4, z_dim=512, sdm=None):
         super(TileNet, self).__init__()
         self.in_channels = in_channels
         self.z_dim = z_dim
@@ -53,7 +55,8 @@ class TileNet(nn.Module):
         self.layer3 = self._make_layer(256, num_blocks[2], stride=2)
         self.layer4 = self._make_layer(512, num_blocks[3], stride=2)
         self.layer5 = self._make_layer(self.z_dim, num_blocks[4], stride=2)
-        self.layer6 = nn.Sequential(nn.Linear(self.z_dim, 1), nn.Sigmoid())  # add a weight layer 
+        if sdm:
+            self.layer6 = nn.Sequential(nn.Linear(self.z_dim, 1), nn.Sigmoid())  # add sdm loss 
 
     def _make_layer(self, planes, num_blocks, stride, no_relu=False):
         strides = [stride] + [1]*(num_blocks-1)
@@ -83,28 +86,33 @@ class TileNet(nn.Module):
         #return self.encode(x)
         return self.encode_sdm(x)
     
-    def triplet_loss(self, z_p, z_n, z_d, y, p_sdm, alpha, csv_writer_indv, epoch, idx, margin=0.1, l2=0):
+    def triplet_loss(self, z_p, z_n, z_d, species, alpha, csv_writer_indv, epoch, idx, y, p_sdm, margin=0.1, l2=0):
         l_n = torch.sqrt(((z_p - z_n) ** 2).sum(dim=1))
         l_d = - torch.sqrt(((z_p - z_d) ** 2).sum(dim=1))
         l_nd = l_n + l_d
-        y = torch.Tensor(y).cuda()
-        l_sdm = -y*torch.log(p_sdm) - (1-y)*torch.log(1-p_sdm)
-        loss = F.relu(l_n + l_d + margin + alpha*l_sdm)
+        if species:
+            epsilon = 1e-10
+            y = torch.Tensor(y).cuda()
+            l_sdm = -y*torch.log(p_sdm+epsilon) - (1-y)*torch.log(1-p_sdm+epsilon)
+            loss = F.relu(l_n + l_d + margin + alpha*l_sdm)
+        else:
+            loss = F.relu(l_n + l_d + margin)
         # prep data to be written out
         if csv_writer_indv is not None:
             n = [x.item() for x in l_n]
             d = [x.item() for x in l_d]
             nd = [x.item() for x in l_nd]
-            _p_sdm = [x.item() for x in p_sdm]
-            _y = [x.item() for x in y]
-            sdm = [x.item() for x in l_sdm]
             out = [epoch, idx]
             csv_writer_indv.writerow(out + ['l_n'] + n)
             csv_writer_indv.writerow(out + ['l_d'] + d)
             csv_writer_indv.writerow(out + ['l_nd'] + nd)
-            csv_writer_indv.writerow(out + ['p_sdm'] + _p_sdm)
-            csv_writer_indv.writerow(out + ['y'] + _y)
-            csv_writer_indv.writerow(out + ['l_sdm'] + sdm)
+            if species: 
+                _p_sdm = [x.item() for x in p_sdm]
+                _y = [x.item() for x in y]
+                sdm = [x.item() for x in l_sdm]
+                csv_writer_indv.writerow(out + ['p_sdm'] + _p_sdm)
+                csv_writer_indv.writerow(out + ['y'] + _y)
+                csv_writer_indv.writerow(out + ['l_sdm'] + sdm)
         l_n = torch.mean(l_n)
         l_d = torch.mean(l_d)
         l_nd = torch.mean(l_n + l_d)
@@ -117,24 +125,25 @@ class TileNet(nn.Module):
         """
         Computes loss for each batch.
         """
-        z_p, p_sdm = self.encode_sdm(patch)  #z_p.shape: [48,32], p_sdm.shape: [48]
-        #print(p_sdm)
+        if species:
+            z_p, p_sdm = self.encode_sdm(patch)  #z_p.shape: [48,32], p_sdm.shape: [48]
+            y = get_records(triplet_idx, species)
+        else:
+            z_p = self.encode(patch)
         z_n, z_d = (self.encode(neighbor), self.encode(distant))
-        y = get_records(triplet_idx, species)
-        #print(y)
-        loss, l_n, l_d, l_nd = self.triplet_loss(z_p, z_n, z_d, y, p_sdm, alpha, csv_writer_indv, epoch, idx, margin=margin, l2=l2)
+        loss, l_n, l_d, l_nd = self.triplet_loss(z_p, z_n, z_d, species, alpha, csv_writer_indv, epoch, idx, y, p_sdm, margin=margin, l2=l2)
         return loss, l_n, l_d, l_nd
 
 
-def make_tilenet(in_channels=4, z_dim=512):
+def make_tilenet(in_channels=4, z_dim=512, sdm=None):
     """
     Returns a TileNet for unsupervised Tile2Vec with the specified number of
     input channels and feature dimension.
     """
     num_blocks = [2, 2, 2, 2, 2]
-    return TileNet(num_blocks, in_channels=in_channels, z_dim=z_dim)
+    return TileNet(num_blocks, in_channels=in_channels, z_dim=z_dim, sdm=sdm)
 
 #a = make_tilenet(3,32)
 #a.cuda()
 #print(a)
-#summary(a,(5,50,50))
+#summary(a,(5,50,50)

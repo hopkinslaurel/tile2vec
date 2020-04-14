@@ -86,8 +86,9 @@ class TileNet(nn.Module):
         l_d = - torch.sqrt(((z_p - z_d) ** 2).sum(dim=1))
         l_nd = l_n + l_d
         if species:
+            epsilon = 1e-10 
             y = torch.Tensor(y).cuda()
-            l_sdm = -y*torch.log(p_sdm) - (1-y)*torch.log(1-p_sdm)
+            l_sdm = -y*torch.log(p_sdm+epsilon) - (1-y)*torch.log(1-p_sdm+epsilon)  # added epsilon to prevent log(0)
             loss = F.relu(l_n + l_d + margin + alpha*l_sdm)
         else:
             loss = F.relu(l_n + l_d + margin)
