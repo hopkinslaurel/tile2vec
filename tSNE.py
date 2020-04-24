@@ -13,6 +13,7 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument('--species', dest='species')
 parser.add_argument('--model', dest='model')
+parser.add_argument('--seed', dest='seed', type=int, default=0)
 args = parser.parse_args()
 
 # perplexities for t-SNE
@@ -36,7 +37,7 @@ for i, perplexity in enumerate(perplexities):
     ax = subplots[i]
 
     t0 = time()
-    tsne = TSNE(n_components=3, init='random', random_state=0, perplexity=perplexity) # potential put this in a loop with different perlexities
+    tsne = TSNE(n_components=2, init='random', random_state=args.seed, perplexity=perplexity) # potential put this in a loop with different perlexities
     Y = tsne.fit_transform(df_all.drop([species], axis=1).values)
     t1 = time()
     print("t-SNE, perplexity=%d in %.2g sec" % (perplexity, t1 - t0))
