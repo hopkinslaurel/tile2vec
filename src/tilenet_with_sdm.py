@@ -36,7 +36,7 @@ class ResidualBlock(nn.Module):
         out += self.shortcut(x)
         #out = F.dropout(out, p=0.5)
         out = F.relu(out)
-        out = F.dropout(out, p=0.5)
+        #out = F.dropout(out, p=0.5)
         return out
 
 
@@ -83,8 +83,8 @@ class TileNet(nn.Module):
         return (z, y)
 
     def forward(self, x):
-        #return self.encode(x)
-        return self.encode_sdm(x)
+        return self.encode(x)
+        #return self.encode_sdm(x)
     
     def triplet_loss(self, z_p, z_n, z_d, species, alpha, csv_writer_indv, epoch, idx, y, p_sdm, margin=0.1, l2=0):
         l_n = torch.sqrt(((z_p - z_n) ** 2).sum(dim=1))
@@ -94,7 +94,7 @@ class TileNet(nn.Module):
             epsilon = 1e-10
             y = torch.Tensor(y).cuda()
             l_sdm = -y*torch.log(p_sdm+epsilon) - (1-y)*torch.log(1-p_sdm+epsilon)
-            loss = F.relu(l_n + l_d + margin + alpha*l_sdm)
+            loss = F.relu(l_n + l_d + margin) + alpha*l_sdm
         else:
             loss = F.relu(l_n + l_d + margin)
         # prep data to be written out
@@ -129,6 +129,7 @@ class TileNet(nn.Module):
             z_p, p_sdm = self.encode_sdm(patch)  #z_p.shape: [48,32], p_sdm.shape: [48]
             y = get_records(triplet_idx, species)
         else:
+            y, p_sdm = None, None
             z_p = self.encode(patch)
         z_n, z_d = (self.encode(neighbor), self.encode(distant))
         loss, l_n, l_d, l_nd = self.triplet_loss(z_p, z_n, z_d, species, alpha, csv_writer_indv, epoch, idx, y, p_sdm, margin=margin, l2=l2)
