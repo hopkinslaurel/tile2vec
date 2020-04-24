@@ -7,9 +7,9 @@ def import_records():
         reader = csv.DictReader(csvfile)
         for row in reader:
             records[row['img_name']] = {'forest':int(row['response_forest']), 'forest_no_frag':int(row['response_forest_no_frag']), \
-                'forest_no_frag_1':int(row['response_forest_no_frag']), 'desert':int(row['response_desert']), \
-                'desert_no_frag':int(row['response_desert_no_frag']), 'frag':int(row['response_frag']), \
-                'interaction':int(row['response_interaction'])}
+                    'forest_no_frag_1':int(row['response_forest_no_frag']), 'forest_no_frag_tca':int(row['response_forest_no_frag_tca']), \
+                'desert':int(row['response_desert']), 'desert_no_frag':int(row['response_desert_no_frag']), 'frag':int(row['response_frag']), \
+                'frag_tca':int(row['response_frag_tca']), 'interaction':int(row['response_interaction']), 'interaction_tca':int(row['response_interaction_tca'])}
     return records
 
 def get_records(triplet_idx, species):
