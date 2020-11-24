@@ -33,17 +33,17 @@ def prep_triplets(triplets, cuda):
     Takes a batch of triplets and converts them into Pytorch variables 
     and puts them on GPU if available.
     """
-    #print('prep_triplets')
     a, n, d = (Variable(triplets['anchor']), Variable(triplets['neighbor']), Variable(triplets['distant']))
     idx = triplets['idx'].numpy()
     #print(idx)  
+    #print(triplets)
     #print("prep_triplets")
     #print(a.size())
     if cuda:
     	a, n, d = (a.cuda(), n.cuda(), d.cuda())
     return (a, n, d, idx)
 
-def train_model(model, cuda, dataloader, optimizer, epoch, species, alpha, csv_writer, csv_writer_indv, 
+def train_model(model, cuda, dataloader, optimizer, epoch, species, alpha,  
     margin=1, l2=0, print_every=100, t0=None):
     """
     Trains a model for one epoch using the provided dataloader.
@@ -53,21 +53,15 @@ def train_model(model, cuda, dataloader, optimizer, epoch, species, alpha, csv_w
         t0 = time.time()
     sum_loss, sum_l_n, sum_l_d, sum_l_nd = (0, 0, 0, 0)
     n_train, n_batches = len(dataloader.dataset), len(dataloader)
-    #print("In train, n_train: " + str(n_train))
-    #print("In train, n_batchs: " + str(n_batches))
     print_sum_loss = 0
     for idx, triplets in enumerate(dataloader):
+        #print_progress(idx+1, n_batches)
         p, n, d, triplet_idx = prep_triplets(triplets, cuda)
         optimizer.zero_grad()
-        writer = None
-        if idx+1 == 1 or idx+1 == n_batches:  # 3125 = 300k images / 96 imgs/batch
-            writer = csv_writer_indv
-        loss, l_n, l_d, l_nd = model.loss(p, n, d, triplet_idx, species, alpha, csv_writer_indv, epoch, idx+1, margin=margin, l2=l2) 
-        #print("loss: ")
-        #print(loss, l_n, l_d, l_nd)
-        #print(loss.item(), l_n.item(), l_d.item(), l_nd.item())
-        #csv_writer.writerow([idx])
-        csv_writer.writerow([loss.item(), l_n.item(), (-1)*l_d.item(), l_nd.item()])
+        #writer = None
+        #if idx+1 == 1 or idx+1 == n_batches:  # 3125 = 300k images / 96 imgs/batch
+            #iwriter = csv_writer_indv
+        loss, l_n, l_d, l_nd = model.loss(p, n, d, triplet_idx, species, alpha, epoch, idx+1, margin=margin, l2=l2) 
         loss.backward()
         optimizer.step()
         sum_loss += loss.item()  #data[0]
@@ -94,7 +88,7 @@ def train_model(model, cuda, dataloader, optimizer, epoch, species, alpha, csv_w
     #print('  Average l_nd: {:0.4f}\n'.format(avg_l_nd))
     return avg_loss #(avg_loss, avg_l_n, avg_l_d, avg_l_nd)
 
-def validate_model(model, cuda, dataloader, optimizer, epoch, species, csv_writer,  
+def validate_model(model, cuda, dataloader, optimizer, epoch, species, alpha,  
     margin=1, l2=0, print_every=100, t0=None):
     """
     Validates a model using the provided dataloader.
@@ -116,12 +110,11 @@ def validate_model(model, cuda, dataloader, optimizer, epoch, species, csv_write
                 csv_writer_indv.writerow([epoch, idx+1])
                 loss, l_n, l_d, l_nd = model.loss_write(p, n, d, csv_writers_indv, margin=margin, l2=l2)
             '''
-            loss, l_n, l_d, l_nd = model.loss(p, n, d, triplet_idx, species, None, epoch, idx+1, margin=margin, l2=l2)
+            loss, l_n, l_d, l_nd = model.loss(p, n, d, triplet_idx, species, alpha, epoch, idx+1, margin=margin, l2=l2)
             #print("loss: ")
             #print(loss, l_n, l_d, l_nd)
             #print(loss.item(), l_n.item(), l_d.item(), l_nd.item())
             #writer.writerow([idx])
-            csv_writer.writerow([loss.item(), l_n.item(), l_d.item(), l_nd.item()])
             sum_loss += loss.item()  #data[0]
             sum_l_n += l_n.item()  #data[0]
             sum_l_d += l_d.item()  #data[0]

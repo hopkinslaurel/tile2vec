@@ -60,6 +60,7 @@ def extract_patch(img_padded, x0, y0, patch_radius, bands):
     size is 15 pixels per side, then the patch radius should be 7.
     """
     if (bands == 1):
+        print(img_padded.shape)
         w_padded, h_padded = img_padded.shape
     else:
         w_padded, h_padded, c = img_padded.shape
@@ -80,7 +81,7 @@ def extract_patch(img_padded, x0, y0, patch_radius, bands):
 def process_patch_features (model, patch, cuda):
     patch = np.moveaxis(patch, -1, 0)
     patch = np.expand_dims(patch, axis=0)
-    patch = clip_and_scale_image(patch, 'landsat')
+    patch = clip_and_scale_image(patch, 'rgb')
     # Embed tile
     patch = torch.from_numpy(patch).float()
     patch = Variable(patch)
@@ -136,6 +137,37 @@ def get_small_features (img_names, model, z_dim, cuda, bands=3, patch_size=50,
             output = np.expand_dims(np.average(output, axis=0),0)
         X[k] = output
     return X
+
+
+def get_mnist_features (imgs, model, z_dim, cuda, bands=1, patch_size=28,
+                        patch_per_img=1, centered=True, save=True, verbose=False, npy=True,
+                        quantile=False):
+    """
+    If centered is True, all patches extracted from the img will be replicates of the same tile
+    centered in the img. I.e. patch_per_img should be 1.
+    """
+
+    model.eval()
+    X = np.zeros((len(imgs), z_dim))
+    if quantile:
+        X = np.zeros((len(imgs), z_dim*6))
+    for k in range(len(imgs)):
+        img = imgs[k]
+        if verbose:
+            print("Getting features for MNIST  " + str(k))
+        #patch_radius = patch_size // 2
+        #img = load_landsat(img_name, bands, bands_only=True, is_npy=npy)
+        img_shape = img.shape
+        output = np.zeros((patch_per_img,z_dim))
+        for i in range(patch_per_img):
+            output[i] = process_patch_features(model, img, cuda)
+        if quantile:
+            output = compute_quantile(output)
+        else:
+            output = np.expand_dims(np.average(output, axis=0),0)
+        X[k] = output
+    return X
+
 
 def get_big_features (img_names, model, z_dim, cuda, bands=5, patch_size=50,
                       patch_per_img=10, save=True, verbose=False, npy=True,

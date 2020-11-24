@@ -19,8 +19,10 @@ parser.add_argument('--seed', dest='seed', type=int, default=0)
 args = parser.parse_args()
 
 species = 'response_'+args.species
-species_responses = pd.read_csv('OR_2011_synthetic_responses.csv', header=0, index_col=0)
-features = pd.read_csv('features/OR_2011_synthetic_' + args.model + '_features.csv', header=None, index_col=0)
+#species = args.species
+#species_responses = pd.read_csv('OR_2011_synthetic_responses.csv', header=0, index_col=0)
+species_responses = pd.read_csv('OR_2011_synthetic_response_with_nlcd.csv', header=0, index_col=0)
+features = pd.read_csv('~/features/OR_2011_synthetic_' + args.model + '_features.csv', header=None, index_col=0)
 
 df_all = pd.merge(features,species_responses[[species]], how='left', left_index=True, right_index=True)
 red = (df_all[species] == 0).values
@@ -40,6 +42,6 @@ ax.set_title("Perplexity=%d" % args.perplexity)
 ax.scatter3D(Y[red, 0], Y[red, 1], Y[red, 2], c="r")
 ax.scatter3D(Y[blue, 0], Y[blue, 1], Y[blue, 2], c="b")
     
-
 fig.suptitle('Species: {}, Features: {}'.format(args.species, args.model))
+#fig.suptitle('Majority Forest, Features: {}'.format(args.model))
 plt.show()

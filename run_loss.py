@@ -21,7 +21,7 @@ from time import time
 import random
 import numpy as np
 from fig_utils import *
-from src.datasets import triplet_dataloader, get_ids
+from src.datasets import triplet_dataloader, triplet_dataloader_synthetic, get_ids
 from src.training import train_model, validate_model, prep_triplets
 from utils import *
 import paths
@@ -61,7 +61,7 @@ parser.add_argument('--gpu', dest='gpu', type=int, default=0)
 parser.add_argument('--species', dest="species")
 parser.add_argument('-synthetic', action='store_true')
 parser.add_argument('--alpha', dest='alpha', type=int, default=10)
-parser.add_argument('--lr', dest='lr', type=int, default=1e-6)
+parser.add_argument('--lr', dest='lr', type=float, default=1e-6)
 #parser.add_argument('-print_loss', action='store_true')
 
 # Debug
@@ -69,6 +69,7 @@ parser.add_argument('-debug', action='store_true')
 
 # Feature extraction
 parser.add_argument('-extract_small', action='store_true')
+parser.add_argument('-extract_mnist', action='store_true')
 parser.add_argument('-extract_mean_stdDev', action='store_true')
 parser.add_argument('-extract_colorHist', action='store_true')
 
@@ -82,7 +83,8 @@ print(args)
 
 # Load Model Definition
 if args.model == "minires_sdm" or args.synthetic:
-    from src.tilenet_with_sdm import make_tilenet
+    #from src.tilenet_with_sdm import make_tilenet
+    from src.minires_with_sdm import make_tilenet
 elif args.model == "minires":
     from src.minires import make_tilenet
 elif args.model == "miniminires":
@@ -111,57 +113,63 @@ writer = SummaryWriter(paths.log_dir + args.exp_name)
 # Data Parameters
 img_type = 'rgb'
 bands = 3
-augment = True
+augment = False
 batch_size = 96
-shuffle = False
+shuffle = True
 num_workers = 2
 list_IDs = None # only needed when working with synthetic data
 if args.synthetic:
     print("Using synthetic dataloader")
-
 if args.train:
     if args.synthetic:
         list_IDs = get_ids('train')
-    train_dataloader = triplet_dataloader(img_type, paths.train_tiles,
-                                          bands=bands, augment=augment,
-                                          batch_size=batch_size,
-                                          shuffle=shuffle,
-                                          num_workers=num_workers,
-                                          n_triplets=args.ntrain,
-                                          pairs_only=False, list_IDs=list_IDs)
+        train_dataloader = triplet_dataloader_synthetic(img_type, paths.train_tiles, list_IDs,
+                                          bands=bands, augment=augment, batch_size=batch_size,
+                                          shuffle=shuffle, num_workers=num_workers,
+                                          n_triplets=args.ntrain, pairs_only=False)
+
+    else: 
+        train_dataloader = triplet_dataloader(img_type, paths.train_tiles, 
+                                          bands=bands, augment=augment, batch_size=batch_size,
+                                          shuffle=shuffle, num_workers=num_workers,
+                                          n_triplets=args.ntrain, pairs_only=False)
 
     print('Train Dataloader set up complete.')
 
 if args.test:
     if args.synthetic:    
         list_IDs = get_ids('test')
-    test_dataloader = triplet_dataloader(img_type, paths.test_tiles,
-                                         bands=bands, augment=augment,
-                                         batch_size=batch_size,
-                                         shuffle=shuffle,
-                                         num_workers=num_workers,
-                                         n_triplets=args.ntest,
-                                         pairs_only=False, list_IDs=list_IDs)
+        test_dataloader = triplet_dataloader_synthetic(img_type, paths.test_tiles, list_IDs,
+                                          bands=bands, augment=augment, batch_size=batch_size,
+                                          shuffle=shuffle, num_workers=num_workers,
+                                          n_triplets=args.ntest, pairs_only=False)
+    else:
+        test_dataloader = triplet_dataloader(img_type, paths.test_tiles,
+                                          bands=bands, augment=augment, batch_size=batch_size,
+                                          shuffle=shuffle, num_workers=num_workers,
+                                          n_triplets=args.ntest, pairs_only=False)
 
     print('Test Dataloader set up complete.')
 
 if args.val:
     if args.synthetic:
         list_IDs = get_ids('val')
-    val_dataloader = triplet_dataloader(img_type, paths.val_tiles,
-                                         bands=bands, augment=augment,
-                                         batch_size=batch_size,
-                                         shuffle=shuffle,
-                                         num_workers=num_workers,
-                                         n_triplets=args.nval,
-                                         pairs_only=False, list_IDs=list_IDs)
+        val_dataloader = triplet_dataloader_synthetic(img_type, paths.val_tiles, list_IDs,
+                                          bands=bands, augment=augment, batch_size=batch_size,
+                                          shuffle=shuffle, num_workers=num_workers,
+                                          n_triplets=args.nval, pairs_only=False)
+    else:
+        val_dataloader = triplet_dataloader(img_type, paths.val_tiles,
+                                          bands=bands, augment=augment, batch_size=batch_size,
+                                          shuffle=shuffle, num_workers=num_workers,
+                                          n_triplets=args.nval, pairs_only=False)
 
     print('Val Dataloader set up complete.')
 
 
 # Training Parameters
 in_channels = bands
-TileNet = make_tilenet(in_channels=in_channels, z_dim=args.z_dim)
+TileNet = make_tilenet(in_channels=in_channels, z_dim=args.z_dim, sdm=args.species)
 print(TileNet)
 
 if cuda: TileNet.cuda()
@@ -173,7 +181,7 @@ if args.model_fn:
 print('TileNet set up complete.')
 
 lr = args.lr
-optimizer = optim.Adam(TileNet.parameters(), lr=lr, betas=(0.5, 0.999))
+optimizer = optim.Adam(TileNet.parameters(), lr=lr, betas=(0.9, 0.999))
 margin = 50
 l2 = 0.01
 print_every = 100
@@ -345,7 +353,7 @@ if args.extract_small:
 
     X = get_small_features(img_names, TileNet, args.z_dim, cuda, bands,
             patch_size=args.extent, patch_per_img=1, centered=True, save=True,  #patch_per_img = 10
-                           verbose=True, npy=True, quantile=args.quantile)
+            verbose=True, npy=True, quantile=args.quantile)
 
     # save extracted features
     np.save(paths.home_dir + 'cluster_conv_features_' + args.exp_name +\
@@ -356,6 +364,38 @@ if args.extract_small:
 
     # save filenames to link features to images
     names = [os.path.split(img_name)[1].split(".")[0].split("_")[-1] for img_name in img_names]
+    names = zip(names)
+    with open(paths.home_dir + 'cluster_conv_names_' + args.exp_name + '_' + str(args.extent) + '_patch' +'.csv', 'w') as csvFile:
+        writer = csv.writer(csvFile)
+        writer.writerows(names)
+
+
+if args.extract_mnist:
+    import mnist
+    print("\n\nExtracting MNIST Featrues")
+    images = mnist.train_images()
+    labels = mnist.train_labels()
+ 
+    zero_ind = labels == 0
+    zero_images = images[zero_ind]
+    three_ind = labels == 3
+    three_images = images[three_ind]
+    all_images = np.concatenate((zero_images, three_images))
+    all_images = all_images.reshape((len(all_images), 28, 28, 1))
+
+    X = get_mnist_features(all_images, TileNet, args.z_dim, cuda, bands,
+            patch_size=28, patch_per_img=1, centered=True, save=True,  #patch_per_img = 10
+            verbose=True, npy=True, quantile=args.quantile)
+    
+    # save extracted features
+    np.save(paths.home_dir + 'cluster_conv_features_' + args.exp_name +\
+            '_' + str(args.extent) + '_patch' + '.npy', X)
+
+    np.savetxt(paths.home_dir + 'cluster_conv_features_' + args.exp_name +\
+        '_' + str(args.extent) + '_patch' + '.csv', X, delimiter=",")
+
+    # save filenames 
+    names = ['zero']*len(zero_images) + ['three']*len(three_images)
     names = zip(names)
     with open(paths.home_dir + 'cluster_conv_names_' + args.exp_name + '_' + str(args.extent) + '_patch' +'.csv', 'w') as csvFile:
         writer = csv.writer(csvFile)

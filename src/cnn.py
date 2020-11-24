@@ -81,7 +81,7 @@ def make_cnn(in_channels=5, z_dim=512):
     """
     return CNN(in_channels=in_channels, z_dim=z_dim)
 
-# a = make_cnn(5, 512)
-# a.cuda()
-# summary(a,(5,50,50))
+#a = make_cnn(5, 512)
+#a.cuda()
+#summary(a,(5,50,50))
 

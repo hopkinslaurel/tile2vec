@@ -99,6 +99,6 @@ def make_tilenet(in_channels=5, z_dim=512):
     num_blocks = [2, 2, 2, 2, 2]
     return TileNet(num_blocks, in_channels=in_channels, z_dim=z_dim)
 
-a = make_tilenet(5)
-a.cuda()
-summary(a,(5,50,50))
+#a = make_tilenet(5)
+#a.cuda()
+#summary(a,(5,50,50))

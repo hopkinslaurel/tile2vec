@@ -14,7 +14,7 @@ for filename in sorted(os.listdir(img_path)):
         img = np.load(img_path + filename)
         #print(img)
         #print(img.shape)
-        res = cv2.resize(img, dsize=(100, 100), interpolation=cv2.INTER_LINEAR)
+        res = cv2.resize(img, dsize=(200, 200), interpolation=cv2.INTER_LINEAR)
         #print(res.shape)
         save_as =  paths.resized + filename
         np.save(save_as, res)
@@ -29,13 +29,17 @@ for filename in sorted(os.listdir(img_path)):
             if img.shape[0] == 4:
                 img = np.delete(img,3,0) # if image has been clipped, an odd 4th dimension of all 255 is appeneded
             img = np.moveaxis(img, 0, -1)
-        #print(img.shape)
-        res = cv2.resize(img, dsize=(100,100), interpolation=cv2.INTER_LINEAR)
-        #print(res.shape)
+        print(img.shape)
+        width = int(img.shape[1]*0.412)
+        height = int(img.shape[0]*0.401)
+        dim = (width, height)
+        print(dim)
+        res = cv2.resize(img, dsize=dim, interpolation=cv2.INTER_LINEAR)
+        print(res.shape)
         #print(res)
         filename_no_ext = os.path.splitext(filename)[0]
-        new_filename = filename_no_ext.replace("10m", "20m") # replace 10m w/20m and remove .tif
-        save_as = paths.resized + new_filename
+        #new_filename = filename_no_ext.replace("10m", "20m") # replace 10m w/20m and remove .tif
+        save_as = paths.resized + filename_no_ext + '_200px'
         np.save(save_as, res)
                 
         #plt.imsave(args.data + '_tile' + str(image_num) + '.tiff', img[start_r:end_r,start_c:end_c])

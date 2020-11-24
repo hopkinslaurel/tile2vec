@@ -12,7 +12,7 @@ import paths
 class TileTripletsDataset(Dataset):
 
     def __init__(self, tile_dir, transform=None, n_triplets=None,
-        pairs_only=True):
+        pairs_only=True, list_IDs=None):
         self.tile_dir = tile_dir
         self.tile_files = glob.glob(os.path.join(self.tile_dir, '*'))
         self.transform = transform
@@ -36,7 +36,6 @@ class TileTripletsDataset(Dataset):
         n = np.moveaxis(n, -1, 0)
         d = np.moveaxis(d, -1, 0)
         sample = {'anchor': a, 'neighbor': n, 'distant': d, 'idx': idx}
-       
         
         #plt.imsave(paths.fig_dir_test_land + '{}_loader_anchor.jpg'.format(idx), a)
         #plt.imsave(paths.fig_dir_test_land + '{}_loader_neighbor.jpg'.format(idx), n)
@@ -45,6 +44,46 @@ class TileTripletsDataset(Dataset):
         if self.transform:
             sample = self.transform(sample)
         return sample
+
+
+class TileTripletsDatasetSynthetic(Dataset):
+
+    def __init__(self, tile_dir, transform=None, n_triplets=None,
+        pairs_only=True, list_IDs=None):
+        self.tile_dir = tile_dir
+        self.tile_files = glob.glob(os.path.join(self.tile_dir, '*'))
+        self.transform = transform
+        self.n_triplets = n_triplets
+        self.pairs_only = pairs_only
+        self.list_IDs = list_IDs # added for synthetic data
+
+    def __len__(self):
+        if self.n_triplets: return self.n_triplets
+        else: return len(self.tile_files) // 3
+
+    def __getitem__(self, idx):
+        ID = self.list_IDs[idx]
+        a = np.load(os.path.join(self.tile_dir, '{}anchor.npy'.format(ID)))
+        n = np.load(os.path.join(self.tile_dir, '{}neighbor.npy'.format(ID)))
+        if self.pairs_only:
+            name = np.random.choice(['anchor', 'neighbor', 'distant'])
+            d_idx = np.random.randint(0, self.n_triplets)
+            d = np.load(os.path.join(self.tile_dir, '{}{}.npy'.format(d_idx, name)))
+        else:
+            d = np.load(os.path.join(self.tile_dir, '{}distant.npy'.format(ID)))
+        a = np.moveaxis(a, -1, 0)
+        n = np.moveaxis(n, -1, 0)
+        d = np.moveaxis(d, -1, 0)
+        sample = {'anchor': a, 'neighbor': n, 'distant': d, 'idx': ID}
+
+        #plt.imsave(paths.fig_dir_test_land + '{}_loader_anchor.jpg'.format(idx), a)
+        #plt.imsave(paths.fig_dir_test_land + '{}_loader_neighbor.jpg'.format(idx), n)
+        #plt.imsave(paths.fig_dir_test_land + '{}_loader_distant.jpg'.format(idx), d)
+
+        if self.transform:
+            sample = self.transform(sample)
+        return sample
+
 
 
 ### TRANSFORMS ###
@@ -122,7 +161,7 @@ class ToFloatTensor(object):
 
 def triplet_dataloader(img_type, tile_dir, bands=4, augment=True,
     batch_size=4, shuffle=True, num_workers=4, n_triplets=None,
-    pairs_only=True):
+    pairs_only=False, list_IDs=None):
     """
     Returns a DataLoader with either NAIP (RGB/IR), RGB, or Landsat tiles.
     Turn shuffle to False for producing embeddings that correspond to original
@@ -141,4 +180,42 @@ def triplet_dataloader(img_type, tile_dir, bands=4, augment=True,
         num_workers=num_workers)
     return dataloader
 
+def triplet_dataloader_synthetic(img_type, tile_dir, list_IDs, bands=4, augment=True,
+    batch_size=4, shuffle=True, num_workers=4, n_triplets=None,
+    pairs_only=False):
+    """
+    Returns a DataLoader with either NAIP (RGB/IR), RGB, or Landsat tiles.
+    Turn shuffle to False for producing embeddings that correspond to original
+    tiles.
+    """
+    assert img_type in ['landsat', 'rgb', 'naip']
+    transform_list = []
+    if img_type in ['landsat', 'naip']: transform_list.append(GetBands(bands))
+    transform_list.append(ClipAndScale(img_type))
+    if augment: transform_list.append(RandomFlipAndRotate())
+    transform_list.append(ToFloatTensor())
+    transform = transforms.Compose(transform_list)
+    dataset = TileTripletsDatasetSynthetic(tile_dir, transform=transform,
+        n_triplets=n_triplets, pairs_only=pairs_only, list_IDs=list_IDs)
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle,
+        num_workers=num_workers)
+    return dataloader
 
+
+def get_ids(model):
+    if model == 'train':
+        # get ids from path
+        data_dir = paths.train_tiles
+    elif model == 'test':
+        data_dir = paths.test_tiles
+    elif model == 'val':
+        data_dir = paths.val_tiles
+    names = sorted(os.listdir(data_dir))
+    IDs = [name.split('.npy')[0] for name in names]
+    IDs = [ID.split('anchor')[0] for ID in IDs]
+    IDs = IDs = [ID.split('neighbor')[0] for ID in IDs]
+    IDs = [ID.split('distant')[0] for ID in IDs]
+    list_ids = [int(ID) for ID in IDs]
+    list_ids = list(set(list_ids)) # only save unique IDs
+    print(model + ": " + str(len(list_ids)))
+    return list_ids 

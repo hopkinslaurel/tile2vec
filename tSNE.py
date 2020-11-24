@@ -20,8 +20,10 @@ args = parser.parse_args()
 perplexities = [5, 30, 50, 100]
 
 species = 'response_'+args.species
-species_responses = pd.read_csv('OR_2011_synthetic_responses.csv', header=0, index_col=0)
-features = pd.read_csv('features/OR_2011_synthetic_' + args.model + '_features.csv', header=None, index_col=0)
+#species = args.species
+#species_responses = pd.read_csv('OR_2011_synthetic_responses.csv', header=0, index_col=0)
+species_responses = pd.read_csv('OR_2011_synthetic_response_with_nlcd.csv', header=0, index_col=0)
+features = pd.read_csv('~/features/OR_2011_synthetic_' + args.model + '_features.csv', header=None, index_col=0)
 
 df_all = pd.merge(features,species_responses[[species]], how='left', left_index=True, right_index=True)
 red = (df_all[species] == 0).values
@@ -50,4 +52,5 @@ for i, perplexity in enumerate(perplexities):
     ax.axis('tight')
 
 fig.suptitle('Species: {}, Features: {}'.format(args.species, args.model))
+#fig.suptitle('Majority Forest, Features: {}'.format(args.model))
 plt.show()
